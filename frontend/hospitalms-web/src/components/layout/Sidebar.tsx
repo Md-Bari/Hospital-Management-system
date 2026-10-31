@@ -11,28 +11,37 @@ import {
   FlaskConical,
   Pill,
   CreditCard,
-  Bed,
-  Settings,
   Sparkles,
   Link as LinkIcon,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { appointmentsApi } from "@/lib/api-client";
 
-const navigationItems = [
+export const navigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Patients", href: "/patients", icon: Users },
-  { name: "Appointments", href: "/appointments", icon: Calendar, badge: 3 },
+  { name: "Appointments", href: "/appointments", icon: Calendar },
   { name: "Doctors", href: "/doctors", icon: Stethoscope },
   { name: "Clinical / EHR", href: "/clinical", icon: FileText },
   { name: "Laboratory", href: "/laboratory", icon: FlaskConical },
   { name: "Pharmacy", href: "/pharmacy", icon: Pill },
   { name: "Billing", href: "/billing", icon: CreditCard },
-  { name: "IPD & Beds", href: "/ipd", icon: Bed },
-  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [waitingCount, setWaitingCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    appointmentsApi
+      .getTodayQueue()
+      .then((q) => {
+        const queue: Array<{ status: string }> = q?.queue ?? [];
+        setWaitingCount(queue.filter((a) => a.status === "Confirmed" || a.status === "CheckedIn").length);
+      })
+      .catch(() => setWaitingCount(null));
+  }, [pathname]);
 
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between h-screen sticky top-0 px-4 py-6 select-none">
@@ -51,7 +60,8 @@ export function Sidebar() {
         {/* Navigation Menu */}
         <nav className="space-y-1.5">
           {navigationItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const badge = item.href === "/appointments" && waitingCount ? waitingCount : null;
             const Icon = item.icon;
 
             return (
@@ -69,9 +79,12 @@ export function Sidebar() {
                   <Icon className={cn("w-4 h-4", isActive ? "text-blue-600" : "text-slate-400")} />
                   <span>{item.name}</span>
                 </div>
-                {item.badge && (
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center">
-                    {item.badge}
+                {badge !== null && (
+                  <span
+                    title="Patients waiting today"
+                    className="min-w-5 h-5 px-1 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center"
+                  >
+                    {badge}
                   </span>
                 )}
               </Link>

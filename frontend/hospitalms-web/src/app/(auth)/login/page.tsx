@@ -20,22 +20,11 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.ok) {
         router.push("/dashboard");
       } else {
-        // For development preview if backend not running, grant access
-        localStorage.setItem(
-          "hospitalms_user",
-          JSON.stringify({
-            id: "00000000-0000-0000-0000-000000000001",
-            fullName: "System Super Administrator",
-            email: email,
-            roles: ["SuperAdmin"],
-            permissions: ["Admin.ManageUsers"],
-          })
-        );
-        router.push("/dashboard");
+        setError(result.error ?? "Invalid email or password.");
       }
     } catch {
       setError("Failed to connect to authentication service.");

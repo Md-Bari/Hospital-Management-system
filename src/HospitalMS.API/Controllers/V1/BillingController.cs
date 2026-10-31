@@ -21,6 +21,8 @@ public class BillingController : BaseApiController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.Invoices
             .Include(i => i.Patient)
             .Include(i => i.Items)
@@ -151,17 +153,29 @@ public class BillingController : BaseApiController
         if (request.Items == null || request.Items.Count == 0)
             return BadRequest(new { success = false, error = "Invoice must contain at least one item." });
 
+        if (request.Items.Any(i => string.IsNullOrWhiteSpace(i.ItemName)))
+            return BadRequest(new { success = false, error = "Every invoice item needs a name." });
+
+        if (request.Items.Any(i => i.Quantity <= 0 || i.UnitPrice < 0))
+            return BadRequest(new { success = false, error = "Item quantity must be at least 1 and unit price cannot be negative." });
+
+        if (request.DiscountAmount < 0 || request.TaxAmount < 0)
+            return BadRequest(new { success = false, error = "Discount and tax cannot be negative." });
+
         var patient = await _context.Patients.FirstOrDefaultAsync(p => p.Id == request.PatientId && !p.IsDeleted);
         if (patient == null)
             return BadRequest(new { success = false, error = "Patient not found." });
 
-        var count = await _context.Invoices.CountAsync();
+        var count = await _context.Invoices.IgnoreQueryFilters().CountAsync();
         var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
 
         var subTotal = request.Items.Sum(i => i.Quantity * i.UnitPrice);
         var discount = request.DiscountAmount;
+        if (discount > subTotal)
+            return BadRequest(new { success = false, error = "Discount cannot exceed the invoice subtotal." });
+
         var tax = request.TaxAmount;
-        var total = Math.Max(0, subTotal - discount + tax);
+        var total = subTotal - discount + tax;
 
         var invoice = new Invoice
         {
@@ -177,7 +191,7 @@ public class BillingController : BaseApiController
             {
                 ItemName = i.ItemName.Trim(),
                 ItemType = i.ItemType ?? "Service",
-                Quantity = i.Quantity <= 0 ? 1 : i.Quantity,
+                Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice
             }).ToList()
         };
@@ -212,6 +226,15 @@ public class BillingController : BaseApiController
         if (request.Amount <= 0)
             return BadRequest(new { success = false, error = "Payment amount must be greater than zero." });
 
+        if (invoice.Status == "Cancelled")
+            return BadRequest(new { success = false, error = "Cannot collect payment on a cancelled invoice." });
+
+        if (invoice.DueAmount <= 0)
+            return BadRequest(new { success = false, error = "This invoice is already fully paid." });
+
+        if (request.Amount > invoice.DueAmount)
+            return BadRequest(new { success = false, error = $"Payment exceeds the due amount of ৳{invoice.DueAmount:N2}." });
+
         var count = await _context.Payments.CountAsync();
         var paymentNumber = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
 
@@ -229,14 +252,7 @@ public class BillingController : BaseApiController
         _context.Payments.Add(payment);
         invoice.PaidAmount += request.Amount;
 
-        if (invoice.PaidAmount >= invoice.TotalAmount)
-        {
-            invoice.Status = "Paid";
-        }
-        else if (invoice.PaidAmount > 0)
-        {
-            invoice.Status = "PartiallyPaid";
-        }
+        invoice.Status = invoice.PaidAmount >= invoice.TotalAmount ? "Paid" : "PartiallyPaid";
 
         await _context.SaveChangesAsync();
 
@@ -261,8 +277,8 @@ public class BillingController : BaseApiController
     [HttpGet("summary")]
     public async Task<ActionResult> GetBillingSummary()
     {
-        var totalBilled = await _context.Invoices.Where(i => !i.IsDeleted).SumAsync(i => i.TotalAmount);
-        var totalCollected = await _context.Invoices.Where(i => !i.IsDeleted).SumAsync(i => i.PaidAmount);
+        var totalBilled = await _context.Invoices.Where(i => !i.IsDeleted && i.Status != "Cancelled").SumAsync(i => i.TotalAmount);
+        var totalCollected = await _context.Invoices.Where(i => !i.IsDeleted && i.Status != "Cancelled").SumAsync(i => i.PaidAmount);
         var totalDue = totalBilled - totalCollected;
 
         var paidCount = await _context.Invoices.CountAsync(i => !i.IsDeleted && i.Status == "Paid");

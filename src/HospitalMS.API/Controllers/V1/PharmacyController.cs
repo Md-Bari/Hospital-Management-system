@@ -22,6 +22,8 @@ public class PharmacyController : BaseApiController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.Medicines
             .Where(m => !m.IsDeleted && m.IsActive)
             .AsNoTracking();
@@ -116,6 +118,12 @@ public class PharmacyController : BaseApiController
     [HttpPost("medicines")]
     public async Task<ActionResult> CreateMedicine([FromBody] CreateMedicineRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.BrandName) || string.IsNullOrWhiteSpace(request.GenericName) || string.IsNullOrWhiteSpace(request.Manufacturer))
+            return BadRequest(new { success = false, error = "Brand name, generic name, and manufacturer are required." });
+
+        if (request.UnitPrice < 0 || request.StockQuantity < 0)
+            return BadRequest(new { success = false, error = "Unit price and stock quantity cannot be negative." });
+
         var medicine = new Medicine
         {
             BrandName = request.BrandName.Trim(),
@@ -143,8 +151,10 @@ public class PharmacyController : BaseApiController
         if (medicine == null)
             return NotFound(new { success = false, error = "Medicine not found." });
 
+        if (medicine.StockQuantity + request.QuantityDelta < 0)
+            return BadRequest(new { success = false, error = $"Cannot remove {-request.QuantityDelta} units; only {medicine.StockQuantity} in stock." });
+
         medicine.StockQuantity += request.QuantityDelta;
-        if (medicine.StockQuantity < 0) medicine.StockQuantity = 0;
 
         await _context.SaveChangesAsync();
         return Ok(new
@@ -163,33 +173,58 @@ public class PharmacyController : BaseApiController
     [HttpPost("dispense")]
     public async Task<ActionResult> Dispense([FromBody] DispenseRequest request)
     {
-        var dispensedItems = new List<object>();
+        if (request.Items == null || request.Items.Count == 0)
+            return BadRequest(new { success = false, error = "No medicines to dispense." });
 
-        foreach (var item in request.Items)
-        {
-            var med = await _context.Medicines.FirstOrDefaultAsync(m => m.Id == item.MedicineId);
-            if (med != null)
-            {
-                var qtyToDeduct = Math.Min(item.Quantity, med.StockQuantity);
-                med.StockQuantity -= qtyToDeduct;
-                dispensedItems.Add(new
-                {
-                    med.BrandName,
-                    DispensedQuantity = qtyToDeduct,
-                    RemainingStock = med.StockQuantity,
-                    UnitPrice = med.UnitPrice,
-                    Total = qtyToDeduct * med.UnitPrice
-                });
-            }
-        }
+        if (request.Items.Any(i => i.Quantity <= 0))
+            return BadRequest(new { success = false, error = "Dispense quantity must be at least 1." });
 
+        Prescription? rx = null;
         if (request.PrescriptionId.HasValue)
         {
-            var rx = await _context.Prescriptions.FirstOrDefaultAsync(p => p.Id == request.PrescriptionId.Value);
-            if (rx != null)
+            rx = await _context.Prescriptions.FirstOrDefaultAsync(p => p.Id == request.PrescriptionId.Value);
+            if (rx == null)
+                return BadRequest(new { success = false, error = "Prescription not found." });
+            if (rx.Status != "Active")
+                return BadRequest(new { success = false, error = $"Prescription is already {rx.Status}." });
+        }
+
+        // Validate the whole request before touching stock so a failure never leaves a partial dispense.
+        var requested = request.Items
+            .GroupBy(i => i.MedicineId)
+            .Select(g => new { MedicineId = g.Key, Quantity = g.Sum(i => i.Quantity) })
+            .ToList();
+        var medicineIds = requested.Select(r => r.MedicineId).ToList();
+        var medicines = await _context.Medicines
+            .Where(m => medicineIds.Contains(m.Id) && m.IsActive)
+            .ToDictionaryAsync(m => m.Id);
+
+        foreach (var item in requested)
+        {
+            if (!medicines.TryGetValue(item.MedicineId, out var med))
+                return BadRequest(new { success = false, error = $"Medicine {item.MedicineId} not found." });
+            if (med.StockQuantity < item.Quantity)
+                return BadRequest(new { success = false, error = $"Insufficient stock for {med.BrandName}: requested {item.Quantity}, available {med.StockQuantity}." });
+        }
+
+        var dispensedItems = new List<object>();
+        foreach (var item in requested)
+        {
+            var med = medicines[item.MedicineId];
+            med.StockQuantity -= item.Quantity;
+            dispensedItems.Add(new
             {
-                rx.Status = "Dispensed";
-            }
+                med.BrandName,
+                DispensedQuantity = item.Quantity,
+                RemainingStock = med.StockQuantity,
+                UnitPrice = med.UnitPrice,
+                Total = item.Quantity * med.UnitPrice
+            });
+        }
+
+        if (rx != null)
+        {
+            rx.Status = "Dispensed";
         }
 
         await _context.SaveChangesAsync();

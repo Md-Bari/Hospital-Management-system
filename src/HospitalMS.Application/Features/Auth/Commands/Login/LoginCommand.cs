@@ -48,11 +48,20 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
             return Result<AuthResponseDto>.Failure("Invalid email or password.");
         }
 
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            return Result<AuthResponseDto>.Failure("Account is temporarily locked due to repeated failed sign-in attempts. Try again later.", "ACCOUNT_LOCKED");
+        }
+
         var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
         {
+            // CheckPasswordAsync does not count failures on its own; without this the configured lockout never triggers.
+            await _userManager.AccessFailedAsync(user);
             return Result<AuthResponseDto>.Failure("Invalid email or password.");
         }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -94,6 +103,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
             AccessToken = accessToken,
             RefreshToken = refreshToken.Token,
             ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            RefreshTokenExpiresAt = refreshToken.ExpiresAt,
             User = new UserDto
             {
                 Id = user.Id,

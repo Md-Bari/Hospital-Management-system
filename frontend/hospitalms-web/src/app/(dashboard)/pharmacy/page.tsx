@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search, Pill, AlertTriangle, Plus, Minus, Check } from "lucide-react";
-import { pharmacyApi, MedicineItem } from "@/lib/api-client";
+import { pharmacyApi, MedicineItem, getApiError } from "@/lib/api-client";
 
 export default function PharmacyPage() {
   const [medicines, setMedicines] = useState<MedicineItem[]>([]);
@@ -48,7 +48,7 @@ export default function PharmacyPage() {
       setToastMsg(`Stock adjusted for ${updated.brandName}: now ${updated.stockQuantity} units.`);
       setTimeout(() => setToastMsg(""), 3500);
     } catch (err) {
-      alert("Failed to adjust stock");
+      alert(getApiError(err, "Failed to adjust stock"));
     }
   };
 
@@ -173,7 +173,7 @@ export default function PharmacyPage() {
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           onClick={() => handleAdjustStock(m.id, -10)}
-                          disabled={m.stockQuantity <= 0}
+                          disabled={m.stockQuantity < 10}
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 transition-colors"
                           title="Reduce 10 units"
                         >

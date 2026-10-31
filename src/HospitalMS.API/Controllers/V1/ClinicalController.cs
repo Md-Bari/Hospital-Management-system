@@ -1,3 +1,4 @@
+using HospitalMS.API.Common;
 using HospitalMS.Application.Common.Interfaces;
 using HospitalMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +22,8 @@ public class ClinicalController : BaseApiController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.ClinicalEncounters
             .Include(e => e.Patient)
             .Include(e => e.Doctor)
@@ -53,7 +56,7 @@ public class ClinicalController : BaseApiController
                     e.Patient.PatientUid,
                     FullName = e.Patient.FirstName + " " + e.Patient.LastName,
                     e.Patient.Gender,
-                    Age = DateTime.UtcNow.Year - e.Patient.DateOfBirth.Year
+                    Age = ClinicDates.Age(e.Patient.DateOfBirth)
                 },
                 Doctor = new
                 {
@@ -152,7 +155,23 @@ public class ClinicalController : BaseApiController
         if (patient == null)
             return BadRequest(new { success = false, error = "Patient not found." });
 
-        var count = await _context.ClinicalEncounters.CountAsync();
+        if (!await _context.Doctors.AnyAsync(d => d.Id == request.DoctorId))
+            return BadRequest(new { success = false, error = "Doctor not found." });
+
+        if (string.IsNullOrWhiteSpace(request.ChiefComplaints) || string.IsNullOrWhiteSpace(request.Diagnosis))
+            return BadRequest(new { success = false, error = "Chief complaints and diagnosis are required." });
+
+        Appointment? appt = null;
+        if (request.AppointmentId.HasValue)
+        {
+            appt = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == request.AppointmentId.Value);
+            if (appt == null)
+                return BadRequest(new { success = false, error = "Appointment not found." });
+            if (appt.PatientId != request.PatientId)
+                return BadRequest(new { success = false, error = "Appointment belongs to a different patient." });
+        }
+
+        var count = await _context.ClinicalEncounters.IgnoreQueryFilters().CountAsync();
         var encounterNumber = $"ENC-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
 
         var encounter = new ClinicalEncounter
@@ -169,10 +188,10 @@ public class ClinicalController : BaseApiController
             Spo2Percentage = request.Spo2Percentage,
             WeightKg = request.WeightKg,
             HeightCm = request.HeightCm,
-            ChiefComplaints = request.ChiefComplaints,
+            ChiefComplaints = request.ChiefComplaints.Trim(),
             HistoryOfPresentIllness = request.HistoryOfPresentIllness,
             ExaminationFindings = request.ExaminationFindings,
-            Diagnosis = request.Diagnosis,
+            Diagnosis = request.Diagnosis.Trim(),
             TreatmentPlan = request.TreatmentPlan,
             FollowUpInstructions = request.FollowUpInstructions,
             Status = "Completed",
@@ -182,13 +201,9 @@ public class ClinicalController : BaseApiController
         _context.ClinicalEncounters.Add(encounter);
 
         // Update appointment status to Completed if linked
-        if (request.AppointmentId.HasValue)
+        if (appt != null)
         {
-            var appt = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == request.AppointmentId.Value);
-            if (appt != null)
-            {
-                appt.Status = "Completed";
-            }
+            appt.Status = "Completed";
         }
 
         await _context.SaveChangesAsync();
@@ -206,6 +221,8 @@ public class ClinicalController : BaseApiController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.Prescriptions
             .Include(p => p.Patient)
             .Include(p => p.Doctor)
@@ -279,7 +296,7 @@ public class ClinicalController : BaseApiController
                     prescription.Patient.Id,
                     prescription.Patient.PatientUid,
                     FullName = prescription.Patient.FirstName + " " + prescription.Patient.LastName,
-                    Age = DateTime.UtcNow.Year - prescription.Patient.DateOfBirth.Year,
+                    Age = ClinicDates.Age(prescription.Patient.DateOfBirth),
                     prescription.Patient.Gender,
                     prescription.Patient.BloodGroup
                 },
@@ -310,7 +327,32 @@ public class ClinicalController : BaseApiController
     [HttpPost("prescriptions")]
     public async Task<ActionResult> CreatePrescription([FromBody] CreatePrescriptionRequest request)
     {
-        var count = await _context.Prescriptions.CountAsync();
+        if (request.Medicines == null || request.Medicines.Count == 0)
+            return BadRequest(new { success = false, error = "A prescription must contain at least one medicine." });
+
+        if (request.Medicines.Any(m => string.IsNullOrWhiteSpace(m.MedicineName)))
+            return BadRequest(new { success = false, error = "Every prescribed medicine needs a name." });
+
+        if (!await _context.Patients.AnyAsync(p => p.Id == request.PatientId))
+            return BadRequest(new { success = false, error = "Patient not found." });
+
+        if (!await _context.Doctors.AnyAsync(d => d.Id == request.DoctorId))
+            return BadRequest(new { success = false, error = "Doctor not found." });
+
+        if (request.EncounterId.HasValue)
+        {
+            var encounter = await _context.ClinicalEncounters
+                .Include(e => e.Prescription)
+                .FirstOrDefaultAsync(e => e.Id == request.EncounterId.Value);
+            if (encounter == null)
+                return BadRequest(new { success = false, error = "Encounter not found." });
+            if (encounter.PatientId != request.PatientId)
+                return BadRequest(new { success = false, error = "Encounter belongs to a different patient." });
+            if (encounter.Prescription != null)
+                return Conflict(new { success = false, error = $"Encounter already has prescription {encounter.Prescription.PrescriptionNumber}." });
+        }
+
+        var count = await _context.Prescriptions.IgnoreQueryFilters().CountAsync();
         var prescriptionNumber = $"RX-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
 
         var prescription = new Prescription
@@ -321,7 +363,7 @@ public class ClinicalController : BaseApiController
             DoctorId = request.DoctorId,
             DoctorNotes = request.DoctorNotes,
             LifestyleAdvice = request.LifestyleAdvice,
-            FollowUpDate = request.FollowUpDate,
+            FollowUpDate = request.FollowUpDate.HasValue ? ClinicDates.AsUtcDate(request.FollowUpDate.Value) : null,
             Status = "Active",
             Medicines = request.Medicines.Select(m => new PrescriptionMedicine
             {

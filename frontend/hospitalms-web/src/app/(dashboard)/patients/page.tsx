@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Search, Filter, Phone, Droplet, User, HeartPulse, X, Check } from "lucide-react";
-import { patientsApi, PatientItem } from "@/lib/api-client";
+import { patientsApi, PatientItem, getApiError, localDateString } from "@/lib/api-client";
 
 export default function PatientsPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-slate-400 text-sm">Loading patient records...</div>}>
+      <PatientsPageContent />
+    </Suspense>
+  );
+}
+
+function PatientsPageContent() {
+  const urlSearch = useSearchParams().get("search") ?? "";
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlSearch);
   const [gender, setGender] = useState("All");
   const [bloodGroup, setBloodGroup] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,11 +39,14 @@ export default function PatientsPage() {
     chronicConditions: "",
   });
 
-  const loadPatients = async () => {
+  const [loadError, setLoadError] = useState("");
+
+  const loadPatients = async (searchTerm: string = search) => {
     try {
       setLoading(true);
+      setLoadError("");
       const res = await patientsApi.getPatients({
-        search: search || undefined,
+        search: searchTerm || undefined,
         gender: gender !== "All" ? gender : undefined,
         bloodGroup: bloodGroup !== "All" ? bloodGroup : undefined,
         pageSize: 20,
@@ -42,15 +55,25 @@ export default function PatientsPage() {
         setPatients(res.items);
       }
     } catch (err) {
-      console.error("Failed to load patients", err);
+      setLoadError(getApiError(err, "Failed to load patients."));
     } finally {
       setLoading(false);
     }
   };
 
+  // Re-run when the top-bar search box navigates here with ?search=, or a filter changes.
+  // Only a new ?search= value overwrites the search box; filter changes keep what the user typed.
+  const lastUrlSearch = useRef(urlSearch);
   useEffect(() => {
-    loadPatients();
-  }, [gender, bloodGroup]);
+    let term = search;
+    if (lastUrlSearch.current !== urlSearch) {
+      lastUrlSearch.current = urlSearch;
+      term = urlSearch;
+      setSearch(urlSearch);
+    }
+    loadPatients(term);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlSearch, gender, bloodGroup]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +86,8 @@ export default function PatientsPage() {
       setSubmitting(true);
       await patientsApi.createPatient({
         ...formData,
-        dateOfBirth: new Date(formData.dateOfBirth).toISOString(),
+        // Send the calendar date as-is; toISOString() can shift it a day depending on time zone.
+        dateOfBirth: formData.dateOfBirth,
       });
       setSuccessMsg("Patient registered successfully!");
       setIsModalOpen(false);
@@ -83,7 +107,7 @@ export default function PatientsPage() {
       loadPatients();
       setTimeout(() => setSuccessMsg(""), 4000);
     } catch (err) {
-      alert("Failed to register patient. Please check required fields.");
+      alert(getApiError(err, "Failed to register patient. Please check required fields."));
     } finally {
       setSubmitting(false);
     }
@@ -141,6 +165,7 @@ export default function PatientsPage() {
               <option value="All">All Genders</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
+              <option value="Other">Other</option>
             </select>
           </div>
 
@@ -153,11 +178,9 @@ export default function PatientsPage() {
               className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none"
             >
               <option value="All">All Groups</option>
-              <option value="A+">A+</option>
-              <option value="B+">B+</option>
-              <option value="O+">O+</option>
-              <option value="AB+">AB+</option>
-              <option value="O-">O-</option>
+              {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Unknown"].map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -165,7 +188,9 @@ export default function PatientsPage() {
 
       {/* Patients Table */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden">
-        {loading ? (
+        {loadError ? (
+          <div className="p-12 text-center text-rose-500 text-sm">{loadError}</div>
+        ) : loading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Loading patient records...</div>
         ) : patients.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">No patients found. Try adjusting your search.</div>
@@ -220,9 +245,15 @@ export default function PatientsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                        Active
-                      </span>
+                      {p.isActive ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                          Inactive
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -291,6 +322,7 @@ export default function PatientsPage() {
                   <label className="text-xs font-semibold text-slate-700">Date of Birth</label>
                   <input
                     type="date"
+                    max={localDateString()}
                     value={formData.dateOfBirth}
                     onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                     className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/20"

@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using HospitalMS.Application.Common.Exceptions;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HospitalMS.API.Middleware;
 
@@ -24,6 +26,10 @@ public class ExceptionHandlingMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unhandled exception occurred during request execution: {Message}", ex.Message);
+            if (context.Response.HasStarted)
+            {
+                throw;
+            }
             await HandleExceptionAsync(context, ex);
         }
     }
@@ -53,6 +59,17 @@ public class ExceptionHandlingMiddleware
                     success = false,
                     error = notFoundException.Message,
                     code = "NOT_FOUND"
+                };
+                break;
+
+            // e.g. two clerks generating the same patient UID or appointment number at the same moment
+            case DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } }:
+                code = HttpStatusCode.Conflict;
+                response = new
+                {
+                    success = false,
+                    error = "This record conflicts with an existing one (duplicate value). Please retry.",
+                    code = "CONFLICT"
                 };
                 break;
 

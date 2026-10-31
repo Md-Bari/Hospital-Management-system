@@ -1,3 +1,4 @@
+using HospitalMS.API.Common;
 using HospitalMS.Application.Common.Interfaces;
 using HospitalMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,8 @@ public class PatientsController : BaseApiController
         [FromQuery] string? gender = null,
         [FromQuery] string? bloodGroup = null)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.Patients
             .Where(p => !p.IsDeleted)
             .AsNoTracking();
@@ -61,7 +64,7 @@ public class PatientsController : BaseApiController
                 p.LastName,
                 FullName = p.FirstName + " " + p.LastName,
                 p.DateOfBirth,
-                Age = DateTime.UtcNow.Year - p.DateOfBirth.Year,
+                Age = ClinicDates.Age(p.DateOfBirth),
                 p.Gender,
                 p.BloodGroup,
                 p.Phone,
@@ -116,7 +119,7 @@ public class PatientsController : BaseApiController
                 patient.LastName,
                 FullName = patient.FirstName + " " + patient.LastName,
                 patient.DateOfBirth,
-                Age = DateTime.UtcNow.Year - patient.DateOfBirth.Year,
+                Age = ClinicDates.Age(patient.DateOfBirth),
                 patient.Gender,
                 patient.BloodGroup,
                 patient.NationalId,
@@ -165,14 +168,13 @@ public class PatientsController : BaseApiController
     [HttpPost]
     public async Task<ActionResult> CreatePatient([FromBody] CreatePatientRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName) || string.IsNullOrWhiteSpace(request.Phone))
-        {
-            return BadRequest(new { success = false, error = "First name, last name, and phone are required." });
-        }
+        var validationError = ValidatePatientRequest(request);
+        if (validationError != null)
+            return BadRequest(new { success = false, error = validationError });
 
-        // Generate Patient UID: DCH-YYYYMM-XXXX
+        // Generate Patient UID: DCH-YYYYMM-XXXX. Soft-deleted patients still hold their UID (unique index).
         var currentPrefix = $"DCH-{DateTime.UtcNow:yyyyMM}-";
-        var countThisMonth = await _context.Patients.CountAsync(p => p.PatientUid.StartsWith(currentPrefix));
+        var countThisMonth = await _context.Patients.IgnoreQueryFilters().CountAsync(p => p.PatientUid.StartsWith(currentPrefix));
         var patientUid = $"{currentPrefix}{(countThisMonth + 1):D4}";
 
         var patient = new Patient
@@ -180,7 +182,7 @@ public class PatientsController : BaseApiController
             PatientUid = patientUid,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
-            DateOfBirth = request.DateOfBirth ?? DateTime.UtcNow.AddYears(-30),
+            DateOfBirth = ClinicDates.AsUtcDate(request.DateOfBirth ?? DateTime.UtcNow.AddYears(-30)),
             Gender = request.Gender ?? "Other",
             BloodGroup = request.BloodGroup ?? "Unknown",
             NationalId = request.NationalId?.Trim(),
@@ -219,9 +221,13 @@ public class PatientsController : BaseApiController
         if (patient == null)
             return NotFound(new { success = false, error = "Patient not found." });
 
+        var validationError = ValidatePatientRequest(request);
+        if (validationError != null)
+            return BadRequest(new { success = false, error = validationError });
+
         patient.FirstName = request.FirstName.Trim();
         patient.LastName = request.LastName.Trim();
-        if (request.DateOfBirth.HasValue) patient.DateOfBirth = request.DateOfBirth.Value;
+        if (request.DateOfBirth.HasValue) patient.DateOfBirth = ClinicDates.AsUtcDate(request.DateOfBirth.Value);
         if (!string.IsNullOrWhiteSpace(request.Gender)) patient.Gender = request.Gender;
         if (!string.IsNullOrWhiteSpace(request.BloodGroup)) patient.BloodGroup = request.BloodGroup;
         patient.NationalId = request.NationalId?.Trim();
@@ -251,6 +257,20 @@ public class PatientsController : BaseApiController
         await _context.SaveChangesAsync();
 
         return Ok(new { success = true, message = "Patient deactivated successfully." });
+    }
+
+    private static string? ValidatePatientRequest(CreatePatientRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName) || string.IsNullOrWhiteSpace(request.Phone))
+            return "First name, last name, and phone are required.";
+
+        if (request.Phone.Trim().Length > 20)
+            return "Phone number cannot exceed 20 characters.";
+
+        if (request.DateOfBirth.HasValue && ClinicDates.AsUtcDate(request.DateOfBirth.Value) > ClinicDates.Today())
+            return "Date of birth cannot be in the future.";
+
+        return null;
     }
 }
 

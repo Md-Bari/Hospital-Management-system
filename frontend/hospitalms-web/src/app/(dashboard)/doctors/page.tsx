@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Search, Filter, Stethoscope, Clock, ShieldCheck, Phone, CheckCircle2, XCircle } from "lucide-react";
-import { doctorsApi, DoctorItem } from "@/lib/api-client";
+import { doctorsApi, DoctorItem, getApiError } from "@/lib/api-client";
 
 export default function DoctorsPage() {
   const [doctors, setDoctors] = useState<DoctorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("All");
+  const [departments, setDepartments] = useState<string[]>([]);
+
+  useEffect(() => {
+    doctorsApi
+      .getSpecialties()
+      .then((res) => setDepartments((res?.departments ?? []).map((d: { name: string }) => d.name)))
+      .catch(() => setDepartments([]));
+  }, []);
 
   const loadDoctors = async () => {
     try {
@@ -40,7 +48,7 @@ export default function DoctorsPage() {
       );
       await doctorsApi.toggleStatus(doctor.id, nextStatus);
     } catch (err) {
-      console.error("Failed to update status", err);
+      alert(getApiError(err, "Failed to update availability"));
       // Revert on failure
       loadDoctors();
     }
@@ -81,11 +89,11 @@ export default function DoctorsPage() {
             className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none"
           >
             <option value="All">All Departments</option>
-            <option value="Cardiology">Cardiology</option>
-            <option value="Neurology">Neurology</option>
-            <option value="Orthopedics">Orthopedics</option>
-            <option value="Pediatrics">Pediatrics</option>
-            <option value="General Medicine">General Medicine</option>
+            {departments.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -179,7 +187,7 @@ export default function DoctorsPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-[11px] text-slate-400">Regular hours: 09:00 AM - 01:00 PM</div>
+                      <div className="text-[11px] text-slate-400">No chamber schedule set</div>
                     )}
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+using HospitalMS.API.Common;
 using HospitalMS.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,8 @@ namespace HospitalMS.API.Controllers.V1;
 
 public class DashboardController : BaseApiController
 {
+    private static readonly string[] ChartColors = { "#2563EB", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4" };
+
     private readonly IApplicationDbContext _context;
 
     public DashboardController(IApplicationDbContext context)
@@ -16,95 +19,102 @@ public class DashboardController : BaseApiController
     [HttpGet("stats")]
     public async Task<ActionResult> GetDashboardStats()
     {
+        var today = ClinicDates.Today();
+        var tomorrow = today.AddDays(1);
+
         var patientCount = await _context.Patients.CountAsync(p => !p.IsDeleted);
-        var doctorCount = await _context.Doctors.CountAsync(d => !d.IsDeleted);
-        var userCount = await _context.Users.CountAsync(u => u.IsActive);
-        var appointmentCount = await _context.Appointments.CountAsync(a => !a.IsDeleted);
+        var doctorCount = await _context.Doctors.CountAsync(d => !d.IsDeleted && d.IsActive);
+        var availableDoctorCount = await _context.Doctors.CountAsync(d => !d.IsDeleted && d.IsActive && d.IsAvailable);
+        var todayAppointments = await _context.Appointments
+            .CountAsync(a => !a.IsDeleted && a.AppointmentDate >= today && a.AppointmentDate < tomorrow && a.Status != "Cancelled");
+        var pendingLabOrders = await _context.LabOrders
+            .CountAsync(o => !o.IsDeleted && o.Status != "Completed" && o.Status != "Cancelled");
+        var lowStockMedicines = await _context.Medicines
+            .CountAsync(m => !m.IsDeleted && m.IsActive && m.StockQuantity <= m.ReorderLevel);
 
         return Ok(new
         {
             success = true,
             data = new
             {
-                patients = new
-                {
-                    count = Math.Max(600, 595 + patientCount),
-                    label = "Patients",
-                    changePercentage = "+12%",
-                    isPositive = true
-                },
-                staffMembers = new
-                {
-                    count = Math.Max(150, 145 + doctorCount + userCount),
-                    label = "Staff Members",
-                    changePercentage = "+3%",
-                    isPositive = true
-                },
-                vehicles = new
-                {
-                    count = 35,
-                    label = "Vehicles",
-                    changePercentage = "0%",
-                    isPositive = true
-                },
-                appointments = new
-                {
-                    count = Math.Max(120, 115 + appointmentCount),
-                    label = "Appointment",
-                    changePercentage = "+18%",
-                    isPositive = true
-                },
-                operations = new
-                {
-                    count = 24,
-                    label = "Operations",
-                    changePercentage = "-5%",
-                    isPositive = false
-                }
+                patients = new { count = patientCount, label = "Patients" },
+                doctors = new { count = doctorCount, label = "Doctors", detail = $"{availableDoctorCount} on duty" },
+                todayAppointments = new { count = todayAppointments, label = "Today's Appointments" },
+                pendingLabOrders = new { count = pendingLabOrders, label = "Pending Lab Orders" },
+                lowStockMedicines = new { count = lowStockMedicines, label = "Low Stock Medicines" }
             }
         });
     }
 
+    /// <summary>Appointments per day over the last 7 days, split by patient group.</summary>
     [HttpGet("trends")]
-    public ActionResult GetTrends([FromQuery] string period = "Last week")
+    public async Task<ActionResult> GetTrends()
     {
-        // Weekly breakdown matching the UI mockup bar chart:
-        var trends = new[]
-        {
-            new { date = "13 Apr", male = 17, female = 23, children = 28 },
-            new { date = "14 Apr", male = 26, female = 11, children = 17 },
-            new { date = "15 Apr", male = 28, female = 35, children = 15 },
-            new { date = "16 Apr", male = 10, female = 17, children = 37 },
-            new { date = "17 Apr", male = 27, female = 33, children = 42 },
-            new { date = "18 Apr", male = 34, female = 27, children = 29 },
-            new { date = "19 Apr", male = 24, female = 33, children = 13 },
-        };
+        var today = ClinicDates.Today();
+        var from = today.AddDays(-6);
+        var to = today.AddDays(1);
 
-        return Ok(new
-        {
-            success = true,
-            period,
-            data = trends
-        });
+        var visits = await _context.Appointments
+            .Where(a => !a.IsDeleted && a.Status != "Cancelled" && a.AppointmentDate >= from && a.AppointmentDate < to)
+            .Select(a => new { a.AppointmentDate, a.Patient.Gender, a.Patient.DateOfBirth })
+            .AsNoTracking()
+            .ToListAsync();
+
+        var trends = Enumerable.Range(0, 7)
+            .Select(offset => from.AddDays(offset))
+            .Select(day =>
+            {
+                var dayVisits = visits.Where(v => v.AppointmentDate.Date == day.Date).ToList();
+                var children = dayVisits.Where(v => ClinicDates.AgeOn(v.DateOfBirth, day) < 18).ToList();
+                var adults = dayVisits.Except(children).ToList();
+                return new
+                {
+                    date = day.ToString("dd MMM"),
+                    male = adults.Count(v => v.Gender == "Male"),
+                    female = adults.Count(v => v.Gender == "Female"),
+                    children = children.Count,
+                    other = adults.Count(v => v.Gender != "Male" && v.Gender != "Female")
+                };
+            })
+            .ToList();
+
+        return Ok(new { success = true, period = "Last 7 days", data = trends });
     }
 
+    /// <summary>Appointment volume by department for today, this week, or this month.</summary>
     [HttpGet("department-stats")]
-    public ActionResult GetDepartmentStats([FromQuery] string timeFilter = "Today")
+    public async Task<ActionResult> GetDepartmentStats([FromQuery] string timeFilter = "Today")
     {
+        var today = ClinicDates.Today();
+        var from = timeFilter switch
+        {
+            "This Week" => today.AddDays(-6),
+            "This Month" => new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc),
+            _ => today
+        };
+        var to = today.AddDays(1);
+
+        var byDepartment = await _context.Appointments
+            .Where(a => !a.IsDeleted && a.Status != "Cancelled" && a.AppointmentDate >= from && a.AppointmentDate < to)
+            .GroupBy(a => a.Doctor.Department.Name)
+            .Select(g => new { name = g.Key, value = g.Count() })
+            .OrderByDescending(g => g.value)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var departments = byDepartment
+            .Take(ChartColors.Length)
+            .Select((d, i) => new { d.name, d.value, color = ChartColors[i] })
+            .ToList();
+
         return Ok(new
         {
             success = true,
             timeFilter,
             data = new
             {
-                total = 320,
-                departments = new[]
-                {
-                    new { name = "General Medicine", value = 120, color = "#2563EB" },
-                    new { name = "Orthopedics", value = 85, color = "#10B981" },
-                    new { name = "Cardiology", value = 65, color = "#F59E0B" },
-                    new { name = "Gynecology", value = 50, color = "#EC4899" }
-                }
+                total = byDepartment.Sum(d => d.value),
+                departments
             }
         });
     }
@@ -112,78 +122,111 @@ public class DashboardController : BaseApiController
     [HttpGet("schedule")]
     public async Task<ActionResult> GetDoctorSchedule()
     {
+        var weekday = ClinicDates.Today().DayOfWeek;
+
         var doctors = await _context.Doctors
-            .Include(d => d.Department)
-            .Include(d => d.Schedules)
             .Where(d => !d.IsDeleted && d.IsActive)
-            .OrderBy(d => d.FullName)
-            .Take(4)
+            .OrderByDescending(d => d.IsAvailable)
+            .ThenBy(d => d.FullName)
+            .Take(5)
             .Select(d => new
             {
                 id = d.Id,
                 name = d.FullName,
                 department = d.Department.Name,
                 specialization = d.Specialization,
-                avatarUrl = d.AvatarUrl ?? "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80",
+                avatarUrl = d.AvatarUrl,
                 isAvailable = d.IsAvailable,
-                timeSlot = d.Schedules.Any() ? $"{d.Schedules.First().StartTime:hh\\:mm} - {d.Schedules.First().EndTime:hh\\:mm}" : "09:00 AM - 01:00 PM"
+                todaySchedule = d.Schedules
+                    .Where(s => s.IsActive && s.DayOfWeek == weekday)
+                    .Select(s => new { s.StartTime, s.EndTime })
+                    .FirstOrDefault()
             })
+            .AsNoTracking()
             .ToListAsync();
 
-        return Ok(new
+        var result = doctors.Select(d => new
         {
-            success = true,
-            data = doctors
+            d.id,
+            d.name,
+            d.department,
+            d.specialization,
+            d.avatarUrl,
+            d.isAvailable,
+            timeSlot = d.todaySchedule == null
+                ? "No chamber today"
+                : $"{DateTime.Today.Add(d.todaySchedule.StartTime):hh:mm tt} - {DateTime.Today.Add(d.todaySchedule.EndTime):hh:mm tt}"
         });
+
+        return Ok(new { success = true, data = result });
     }
 
+    /// <summary>Operational alerts derived from live data: stock, overdue invoices, urgent labs.</summary>
     [HttpGet("alerts")]
-    public ActionResult GetOperationalAlerts()
+    public async Task<ActionResult> GetOperationalAlerts()
     {
-        var alerts = new[]
-        {
-            new
-            {
-                id = 1,
-                title = "Oxygen Cylinder Refill Needed",
-                time = "10 minutes ago",
-                type = "oxygen",
-                urgency = "high",
-                icon = "flame"
-            },
-            new
-            {
-                id = 2,
-                title = "Ambulance Dispatched",
-                time = "30 minutes ago",
-                type = "ambulance",
-                urgency = "medium",
-                icon = "ambulance"
-            },
-            new
-            {
-                id = 3,
-                title = "Room Cleaning Needed",
-                time = "1 hour ago",
-                type = "cleaning",
-                urgency = "low",
-                icon = "sparkles"
-            },
-            new
-            {
-                id = 4,
-                title = "Patient Transport Required",
-                time = "Yesterday",
-                type = "transport",
-                urgency = "low",
-                icon = "bed"
-            }
-        };
+        var alerts = new List<object>();
 
-        return Ok(new
+        var lowStock = await _context.Medicines
+            .Where(m => !m.IsDeleted && m.IsActive && m.StockQuantity <= m.ReorderLevel)
+            .OrderBy(m => m.StockQuantity)
+            .Take(3)
+            .Select(m => new { m.Id, m.BrandName, m.StockQuantity, m.ReorderLevel })
+            .AsNoTracking()
+            .ToListAsync();
+
+        foreach (var m in lowStock)
         {
-            success = true,
-            data = alerts
-        });
+            alerts.Add(new
+            {
+                id = $"stock-{m.Id}",
+                title = m.StockQuantity == 0 ? $"{m.BrandName} is out of stock" : $"{m.BrandName} low: {m.StockQuantity} left",
+                time = $"Reorder level {m.ReorderLevel}",
+                type = "stock",
+                urgency = m.StockQuantity == 0 ? "high" : "medium",
+                href = "/pharmacy"
+            });
+        }
+
+        var urgentLabs = await _context.LabOrders
+            .Where(o => !o.IsDeleted && o.Status != "Completed" && o.Status != "Cancelled" && o.Priority != "Routine")
+            .OrderBy(o => o.CreatedAt)
+            .Take(3)
+            .Select(o => new { o.Id, o.OrderNumber, o.Priority, PatientName = o.Patient.FirstName + " " + o.Patient.LastName })
+            .AsNoTracking()
+            .ToListAsync();
+
+        foreach (var o in urgentLabs)
+        {
+            alerts.Add(new
+            {
+                id = $"lab-{o.Id}",
+                title = $"{o.Priority} lab order {o.OrderNumber} pending",
+                time = o.PatientName,
+                type = "lab",
+                urgency = o.Priority == "STAT" ? "high" : "medium",
+                href = "/laboratory"
+            });
+        }
+
+        var unpaidCount = await _context.Invoices.CountAsync(i => !i.IsDeleted && (i.Status == "Unpaid" || i.Status == "PartiallyPaid"));
+        if (unpaidCount > 0)
+        {
+            var dueTotal = await _context.Invoices
+                .Where(i => !i.IsDeleted && (i.Status == "Unpaid" || i.Status == "PartiallyPaid"))
+                .SumAsync(i => i.TotalAmount - i.PaidAmount);
+
+            alerts.Add(new
+            {
+                id = "billing-due",
+                title = $"{unpaidCount} invoice(s) awaiting payment",
+                time = $"৳{dueTotal:N0} outstanding",
+                type = "billing",
+                urgency = "low",
+                href = "/billing"
+            });
+        }
+
+        return Ok(new { success = true, data = alerts });
     }
 }

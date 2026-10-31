@@ -2,15 +2,15 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { UserDto, AuthResponseDto, ApiResponse } from "@/types/auth";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, getApiError } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
   user: UserDto | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
 }
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
     try {
       const response = await apiClient.post<ApiResponse<AuthResponseDto>>("/auth/login", {
         email,
@@ -56,19 +56,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("hospitalms_refresh", authData.refreshToken);
         localStorage.setItem("hospitalms_user", JSON.stringify(authData.user));
 
-        return true;
+        return { ok: true };
       }
-      return false;
-    } catch {
-      return false;
+      return { ok: false, error: response.data.error || "Sign-in failed." };
+    } catch (err) {
+      return { ok: false, error: getApiError(err, "Unable to reach the authentication service.") };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Revoke the refresh token server-side before local credentials are cleared.
+    const refreshToken = localStorage.getItem("hospitalms_refresh");
     try {
-      apiClient.post("/auth/logout");
+      await apiClient.post("/auth/logout", { refreshToken });
     } catch {
-      // Ignore network errors on logout
+      // Ignore network errors on logout; local session is cleared regardless
     }
 
     setToken(null);

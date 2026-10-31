@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { AuthResponseDto } from "@/types/auth";
+import { ApiResponse, AuthResponseDto } from "@/types/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
@@ -48,7 +48,8 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthEndpoint = originalRequest?.url?.startsWith("/auth/");
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -67,16 +68,21 @@ apiClient.interceptors.response.use(
 
       try {
         const storedRefreshToken = typeof window !== "undefined" ? localStorage.getItem("hospitalms_refresh") : null;
-        const response = await axios.post<AuthResponseDto>(
+        const response = await axios.post<ApiResponse<AuthResponseDto>>(
           `${API_BASE_URL}/auth/refresh`,
           { refreshToken: storedRefreshToken },
           { withCredentials: true }
         );
 
-        const newAuth = response.data;
+        // The API wraps every payload as { success, data }; the tokens live under data.
+        const newAuth = response.data.data;
+        if (!newAuth?.accessToken) {
+          throw new Error("Refresh response did not contain an access token");
+        }
         if (typeof window !== "undefined") {
           localStorage.setItem("hospitalms_token", newAuth.accessToken);
           localStorage.setItem("hospitalms_refresh", newAuth.refreshToken);
+          localStorage.setItem("hospitalms_user", JSON.stringify(newAuth.user));
         }
 
         processQueue(null, newAuth.accessToken);
@@ -102,6 +108,24 @@ apiClient.interceptors.response.use(
   }
 );
 
+/** Extracts the server's error message from a failed request, falling back to a generic one. */
+export function getApiError(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { error?: string; validationErrors?: Record<string, string[]> } | undefined;
+    const firstValidation = data?.validationErrors && Object.values(data.validationErrors)[0]?.[0];
+    return firstValidation || data?.error || fallback;
+  }
+  return fallback;
+}
+
+/** Today's date as yyyy-MM-dd in the browser's local time zone (toISOString would give the UTC date). */
+export function localDateString(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // -------------------------------------------------------------
 // HEALTHCARE API CLIENT SERVICES
 // -------------------------------------------------------------
@@ -112,8 +136,8 @@ export const dashboardApi = {
     const res = await apiClient.get("/dashboard/stats");
     return res.data.data;
   },
-  getTrends: async (period = "Last week") => {
-    const res = await apiClient.get(`/dashboard/trends?period=${encodeURIComponent(period)}`);
+  getTrends: async () => {
+    const res = await apiClient.get("/dashboard/trends");
     return res.data.data;
   },
   getDepartmentStats: async (timeFilter = "Today") => {
@@ -280,6 +304,30 @@ export const appointmentsApi = {
 };
 
 // 5. Clinical APIs
+export interface EncounterListItem {
+  id: string;
+  encounterNumber: string;
+  encounterDateTime: string;
+  chiefComplaints: string;
+  diagnosis: string;
+  status: string;
+  patient: { id: string; patientUid: string; fullName: string; gender: string; age: number };
+  doctor: { id: string; fullName: string; specialization: string };
+  hasPrescription: boolean;
+}
+
+export interface PrescriptionListItem {
+  id: string;
+  prescriptionNumber: string;
+  createdAt: string;
+  status: string;
+  followUpDate?: string;
+  patient: { id: string; patientUid: string; fullName: string };
+  doctor: { id: string; fullName: string; specialization: string };
+  medicineCount: number;
+  medicinesSummary: string;
+}
+
 export const clinicalApi = {
   getEncounters: async (params?: { patientId?: string; doctorId?: string; page?: number; pageSize?: number }) => {
     const res = await apiClient.get("/clinical/encounters", { params });
@@ -304,13 +352,51 @@ export interface LabTestItem {
   referenceRange?: string;
 }
 
+export interface LabOrderListItem {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  priority: string;
+  status: string;
+  totalAmount: number;
+  totalAmountDisplay: string;
+  isPaid: boolean;
+  patient: { id: string; patientUid: string; fullName: string };
+  doctorName?: string;
+  itemCount: number;
+  tests: string[];
+}
+
+export interface LabOrderDetailItem {
+  id: string;
+  labTestId: string;
+  testName: string;
+  unitPriceDisplay: string;
+  resultValue?: string;
+  referenceRange?: string;
+  isAbnormal?: boolean;
+  status: string;
+}
+
 export const laboratoryApi = {
   getTests: async (params?: { category?: string; search?: string }) => {
     const res = await apiClient.get("/laboratory/tests", { params });
     return res.data.data;
   },
-  getOrders: async (params?: { patientId?: string; status?: string; page?: number }) => {
+  getOrders: async (params?: { patientId?: string; status?: string; page?: number; pageSize?: number }) => {
     const res = await apiClient.get("/laboratory/orders", { params });
+    return res.data.data;
+  },
+  getOrderById: async (id: string) => {
+    const res = await apiClient.get(`/laboratory/orders/${id}`);
+    return res.data.data;
+  },
+  createOrder: async (data: { patientId: string; doctorId?: string; priority?: string; isPaid?: boolean; testIds: string[] }) => {
+    const res = await apiClient.post("/laboratory/orders", data);
+    return res.data.data;
+  },
+  updateResults: async (id: string, results: Array<{ itemId: string; resultValue: string; isAbnormal: boolean }>) => {
+    const res = await apiClient.put(`/laboratory/orders/${id}/results`, { results });
     return res.data.data;
   },
 };

@@ -1,10 +1,12 @@
 using HospitalMS.Domain.Common;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HospitalMS.API.Controllers.V1;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public abstract class BaseApiController : ControllerBase
 {
@@ -49,6 +51,11 @@ public abstract class BaseApiController : ControllerBase
             error = result.ErrorMessage,
             code = result.ErrorCode
         });
+    }
+
+    protected static (int Page, int PageSize) NormalizePaging(int page, int pageSize, int maxPageSize = 100)
+    {
+        return (Math.Max(1, page), Math.Clamp(pageSize, 1, maxPageSize));
     }
 
     protected string GetClientIpAddress()

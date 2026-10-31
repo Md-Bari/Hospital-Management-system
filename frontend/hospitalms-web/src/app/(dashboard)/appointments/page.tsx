@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Search, Calendar as CalendarIcon, Clock, User, Stethoscope, CheckCircle2, ChevronRight, X } from "lucide-react";
-import { appointmentsApi, AppointmentItem, patientsApi, doctorsApi, PatientItem, DoctorItem } from "@/lib/api-client";
+import {
+  appointmentsApi,
+  AppointmentItem,
+  patientsApi,
+  doctorsApi,
+  PatientItem,
+  DoctorItem,
+  getApiError,
+  localDateString,
+} from "@/lib/api-client";
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
@@ -17,23 +26,27 @@ export default function AppointmentsPage() {
   const [bookingForm, setBookingForm] = useState({
     patientId: "",
     doctorId: "",
-    appointmentDate: new Date().toISOString().split("T")[0],
+    appointmentDate: localDateString(),
     reason: "Regular Consultation",
     isPaid: false,
   });
 
+  const [dateFilter, setDateFilter] = useState(localDateString());
+  const [loadError, setLoadError] = useState("");
+
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError("");
       const [apptRes, queueRes] = await Promise.all([
-        appointmentsApi.getAppointments({ pageSize: 30 }),
+        appointmentsApi.getAppointments({ pageSize: 50, date: dateFilter || undefined }),
         appointmentsApi.getTodayQueue().catch(() => null),
       ]);
 
       if (apptRes?.items) setAppointments(apptRes.items);
       if (queueRes) setQueueData(queueRes);
     } catch (err) {
-      console.error("Failed to load appointments", err);
+      setLoadError(getApiError(err, "Failed to load appointments."));
     } finally {
       setLoading(false);
     }
@@ -41,17 +54,27 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFilter]);
+
+  useEffect(() => {
     // Load lookup data for booking modal
-    patientsApi.getPatients({ pageSize: 50 }).then((res) => setPatients(res?.items || []));
-    doctorsApi.getDoctors().then((res) => setDoctors(res || []));
+    patientsApi.getPatients({ pageSize: 100 }).then((res) => setPatients(res?.items || [])).catch(() => setPatients([]));
+    doctorsApi.getDoctors().then((res) => setDoctors(res || [])).catch(() => setDoctors([]));
   }, []);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    let reason: string | undefined;
+    if (newStatus === "Cancelled") {
+      const input = window.prompt("Reason for cancellation?");
+      if (input === null) return;
+      reason = input;
+    }
     try {
-      await appointmentsApi.updateStatus(id, newStatus);
+      await appointmentsApi.updateStatus(id, newStatus, reason);
       loadData();
     } catch (err) {
-      alert("Failed to update appointment status");
+      alert(getApiError(err, "Failed to update appointment status"));
     }
   };
 
@@ -74,7 +97,7 @@ export default function AppointmentsPage() {
       setIsModalOpen(false);
       loadData();
     } catch (err) {
-      alert("Failed to book appointment.");
+      alert(getApiError(err, "Failed to book appointment."));
     } finally {
       setSubmitting(false);
     }
@@ -93,8 +116,12 @@ export default function AppointmentsPage() {
 
         <button
           onClick={() => {
-            if (patients.length > 0 && !bookingForm.patientId) bookingForm.patientId = patients[0].id;
-            if (doctors.length > 0 && !bookingForm.doctorId) bookingForm.doctorId = doctors[0].id;
+            setBookingForm((prev) => ({
+              ...prev,
+              patientId: prev.patientId || patients[0]?.id || "",
+              doctorId: prev.doctorId || doctors.find((d) => d.isAvailable)?.id || doctors[0]?.id || "",
+              appointmentDate: prev.appointmentDate < localDateString() ? localDateString() : prev.appointmentDate,
+            }));
             setIsModalOpen(true);
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all"
@@ -176,15 +203,37 @@ export default function AppointmentsPage() {
 
       {/* Appointments List */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-bold text-slate-900 text-sm">Scheduled Appointments</h3>
-          <span className="text-xs text-slate-400 font-medium">{appointments.length} Total</span>
+          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+            <label className="flex items-center gap-1.5">
+              <span>Date:</span>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setDateFilter("")}
+              className={`px-2 py-1 rounded-lg border ${dateFilter ? "border-slate-200 hover:bg-slate-50" : "border-blue-200 bg-blue-50 text-blue-700"}`}
+            >
+              All dates
+            </button>
+            <span className="text-slate-400">{appointments.length} shown</span>
+          </div>
         </div>
 
-        {loading ? (
+        {loadError ? (
+          <div className="p-12 text-center text-rose-500 text-sm">{loadError}</div>
+        ) : loading ? (
           <div className="p-12 text-center text-slate-400 text-sm">Loading appointments...</div>
         ) : appointments.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">No appointments scheduled.</div>
+          <div className="p-12 text-center text-slate-400 text-sm">
+            {dateFilter ? "No appointments on this date." : "No appointments scheduled."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -236,6 +285,8 @@ export default function AppointmentsPage() {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                           a.status === "Completed"
                             ? "bg-slate-100 text-slate-600"
+                            : a.status === "Cancelled" || a.status === "NoShow"
+                            ? "bg-rose-50 text-rose-600 border border-rose-200"
                             : a.status === "InConsultation"
                             ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                             : a.status === "CheckedIn"
@@ -246,8 +297,8 @@ export default function AppointmentsPage() {
                         {a.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      {a.status === "Confirmed" && (
+                    <td className="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
+                      {(a.status === "Confirmed" || a.status === "Scheduled") && (
                         <button
                           onClick={() => handleStatusChange(a.id, "CheckedIn")}
                           className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm"
@@ -269,6 +320,14 @@ export default function AppointmentsPage() {
                           className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-sm"
                         >
                           Complete
+                        </button>
+                      )}
+                      {(a.status === "Confirmed" || a.status === "Scheduled" || a.status === "CheckedIn") && (
+                        <button
+                          onClick={() => handleStatusChange(a.id, "Cancelled")}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all"
+                        >
+                          Cancel
                         </button>
                       )}
                     </td>
@@ -324,7 +383,7 @@ export default function AppointmentsPage() {
                 >
                   {doctors.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.fullName} — {d.specialization} ({d.consultationFeeDisplay})
+                      {d.fullName} — {d.specialization} ({d.consultationFeeDisplay}){d.isAvailable ? "" : " (unavailable)"}
                     </option>
                   ))}
                 </select>
@@ -335,6 +394,7 @@ export default function AppointmentsPage() {
                 <input
                   type="date"
                   required
+                  min={localDateString()}
                   value={bookingForm.appointmentDate}
                   onChange={(e) => setBookingForm({ ...bookingForm, appointmentDate: e.target.value })}
                   className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none"

@@ -77,6 +77,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             AccessToken = newAccessToken,
             RefreshToken = newRefreshToken.Token,
             ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            RefreshTokenExpiresAt = newRefreshToken.ExpiresAt,
             User = new UserDto
             {
                 Id = user.Id,

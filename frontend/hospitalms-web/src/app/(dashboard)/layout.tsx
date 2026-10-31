@@ -11,14 +11,23 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const router = useRouter();
+  const isAuthenticated = Boolean(user && token);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      // Allow preview in development or redirect to login
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
     }
-  }, [user, isLoading, router]);
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-sm text-slate-400">
+        Checking your session...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -30,4 +39,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-

@@ -60,6 +60,13 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Us
             return Result<UserDto>.Failure("A user with this email address already exists.");
         }
 
+        // Validate the role before creating the account so a typo can't leave a user with no role at all.
+        var roleToAssign = string.IsNullOrWhiteSpace(request.RoleName) ? "Patient" : request.RoleName;
+        if (!await _roleManager.RoleExistsAsync(roleToAssign))
+        {
+            return Result<UserDto>.Failure($"Role '{roleToAssign}' does not exist.");
+        }
+
         var user = new ApplicationUser
         {
             UserName = request.Email,
@@ -79,11 +86,11 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Us
             return Result<UserDto>.Failure(errors);
         }
 
-        // Assign default role (Patient if not specified, or requested role if valid)
-        var roleToAssign = string.IsNullOrWhiteSpace(request.RoleName) ? "Patient" : request.RoleName;
-        if (await _roleManager.RoleExistsAsync(roleToAssign))
+        var roleResult = await _userManager.AddToRoleAsync(user, roleToAssign);
+        if (!roleResult.Succeeded)
         {
-            await _userManager.AddToRoleAsync(user, roleToAssign);
+            await _userManager.DeleteAsync(user);
+            return Result<UserDto>.Failure(string.Join("; ", roleResult.Errors.Select(e => e.Description)));
         }
 
         return Result<UserDto>.Success(new UserDto

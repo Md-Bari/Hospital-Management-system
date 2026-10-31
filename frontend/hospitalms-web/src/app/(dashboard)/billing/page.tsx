@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search, CreditCard, DollarSign, CheckCircle2, Clock, X, Check } from "lucide-react";
-import { billingApi, InvoiceListItem } from "@/lib/api-client";
+import { billingApi, InvoiceListItem, getApiError } from "@/lib/api-client";
 
 export default function BillingPage() {
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
@@ -62,12 +62,12 @@ export default function BillingPage() {
         transactionReference: txnRef || undefined,
       });
 
-      setSuccessMsg(`Payment of ৳${paymentAmount} recorded successfully via ${paymentMethod}!`);
+      setSuccessMsg(`Payment of ৳${paymentAmount.toLocaleString("en-BD")} recorded successfully via ${paymentMethod}!`);
       setActiveInvoice(null);
       loadData();
       setTimeout(() => setSuccessMsg(""), 4000);
     } catch (err) {
-      alert("Failed to record payment");
+      alert(getApiError(err, "Failed to record payment"));
     } finally {
       setSubmittingPayment(false);
     }
@@ -251,7 +251,8 @@ export default function BillingPage() {
                 <input
                   type="number"
                   required
-                  min={1}
+                  min={0.01}
+                  step={0.01}
                   max={activeInvoice.dueAmount}
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(Number(e.target.value))}
@@ -295,7 +296,7 @@ export default function BillingPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingPayment || paymentAmount <= 0}
+                  disabled={submittingPayment || paymentAmount <= 0 || paymentAmount > activeInvoice.dueAmount}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
                 >
                   {submittingPayment ? "Processing..." : `Confirm Payment (৳${paymentAmount})`}

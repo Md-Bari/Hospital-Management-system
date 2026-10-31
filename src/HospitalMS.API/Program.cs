@@ -7,6 +7,7 @@ using HospitalMS.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,7 +30,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 // 4. Swagger / OpenAPI Documentation
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    // Lets Swagger UI call the [Authorize] endpoints: log in via /auth/login, then paste the access token.
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Paste the accessToken returned by POST /api/v1/auth/login."
+    });
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
 
 // 5. JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "HospitalMS_SuperSecretKeyForJWTAuth2026EnterpriseGrade_MustBeAtLeast32BytesLong!";

@@ -1,3 +1,4 @@
+using HospitalMS.API.Common;
 using HospitalMS.Application.Common.Interfaces;
 using HospitalMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,11 @@ namespace HospitalMS.API.Controllers.V1;
 
 public class AppointmentsController : BaseApiController
 {
+    private static readonly string[] AllowedStatuses =
+        { "Scheduled", "Confirmed", "CheckedIn", "InConsultation", "Completed", "Cancelled", "NoShow" };
+
+    private static readonly string[] TerminalStatuses = { "Completed", "Cancelled", "NoShow" };
+
     private readonly IApplicationDbContext _context;
 
     public AppointmentsController(IApplicationDbContext context)
@@ -23,6 +29,8 @@ public class AppointmentsController : BaseApiController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.Appointments
             .Include(a => a.Patient)
             .Include(a => a.Doctor)
@@ -32,8 +40,9 @@ public class AppointmentsController : BaseApiController
 
         if (date.HasValue)
         {
-            var d = date.Value.Date;
-            query = query.Where(a => a.AppointmentDate.Date == d);
+            var dayStart = ClinicDates.AsUtcDate(date.Value);
+            var dayEnd = dayStart.AddDays(1);
+            query = query.Where(a => a.AppointmentDate >= dayStart && a.AppointmentDate < dayEnd);
         }
 
         if (doctorId.HasValue)
@@ -165,17 +174,36 @@ public class AppointmentsController : BaseApiController
         if (doctor == null)
             return BadRequest(new { success = false, error = "Doctor not found." });
 
-        var apptDate = request.AppointmentDate.Date;
+        var apptDate = ClinicDates.AsUtcDate(request.AppointmentDate);
+        if (apptDate < ClinicDates.Today())
+            return BadRequest(new { success = false, error = "Appointment date cannot be in the past." });
 
-        // Calculate next queue serial number for this doctor on this day
-        var existingCount = await _context.Appointments
-            .CountAsync(a => a.DoctorId == request.DoctorId && a.AppointmentDate.Date == apptDate && !a.IsDeleted);
+        var nextDay = apptDate.AddDays(1);
 
-        var queueSerial = existingCount + 1;
-        var apptNumber = $"APT-{apptDate:yyyyMMdd}-{queueSerial:D3}";
+        // Queue serial is per doctor per day; cancelled/no-show bookings keep their serial.
+        var lastSerial = await _context.Appointments
+            .IgnoreQueryFilters()
+            .Where(a => a.DoctorId == request.DoctorId && a.AppointmentDate >= apptDate && a.AppointmentDate < nextDay)
+            .MaxAsync(a => (int?)a.QueueSerialNumber) ?? 0;
+        var queueSerial = lastSerial + 1;
 
-        var startTime = request.SlotStartTime ?? new TimeSpan(9, 0, 0).Add(TimeSpan.FromMinutes((queueSerial - 1) * 15));
-        var endTime = startTime.Add(TimeSpan.FromMinutes(15));
+        // Appointment numbers are unique hospital-wide, so the sequence spans every doctor that day.
+        var dayCount = await _context.Appointments
+            .IgnoreQueryFilters()
+            .CountAsync(a => a.AppointmentDate >= apptDate && a.AppointmentDate < nextDay);
+        var apptNumber = $"APT-{apptDate:yyyyMMdd}-{(dayCount + 1):D3}";
+
+        var schedule = await _context.DoctorSchedules
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.DoctorId == doctor.Id && s.IsActive && s.DayOfWeek == apptDate.DayOfWeek);
+
+        if (schedule != null && queueSerial > schedule.MaxPatients)
+            return BadRequest(new { success = false, error = $"{doctor.FullName} is fully booked on {apptDate:dd MMM yyyy} ({schedule.MaxPatients} patients max)." });
+
+        var slotMinutes = schedule?.SlotDurationMinutes > 0 ? schedule.SlotDurationMinutes : 15;
+        var dayStartTime = schedule?.StartTime ?? new TimeSpan(9, 0, 0);
+        var startTime = request.SlotStartTime ?? dayStartTime.Add(TimeSpan.FromMinutes((queueSerial - 1) * slotMinutes));
+        var endTime = startTime.Add(TimeSpan.FromMinutes(slotMinutes));
 
         var appointment = new Appointment
         {
@@ -221,10 +249,17 @@ public class AppointmentsController : BaseApiController
         if (appointment == null)
             return NotFound(new { success = false, error = "Appointment not found." });
 
-        appointment.Status = request.Status;
-        if (request.Status == "Cancelled" && !string.IsNullOrWhiteSpace(request.Reason))
+        var newStatus = AllowedStatuses.FirstOrDefault(s => string.Equals(s, request.Status?.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (newStatus == null)
+            return BadRequest(new { success = false, error = $"Invalid status. Allowed values: {string.Join(", ", AllowedStatuses)}." });
+
+        if (TerminalStatuses.Contains(appointment.Status) && appointment.Status != newStatus)
+            return BadRequest(new { success = false, error = $"Appointment is already {appointment.Status} and cannot be changed." });
+
+        appointment.Status = newStatus;
+        if (newStatus == "Cancelled" && !string.IsNullOrWhiteSpace(request.Reason))
         {
-            appointment.CancellationReason = request.Reason;
+            appointment.CancellationReason = request.Reason.Trim();
         }
 
         await _context.SaveChangesAsync();
@@ -234,11 +269,11 @@ public class AppointmentsController : BaseApiController
     [HttpGet("queue/today")]
     public async Task<ActionResult> GetTodayQueue([FromQuery] Guid? doctorId = null)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = ClinicDates.Today();
+        var tomorrow = today.AddDays(1);
         var query = _context.Appointments
-            .Include(a => a.Patient)
-            .Include(a => a.Doctor)
-            .Where(a => a.AppointmentDate.Date == today && !a.IsDeleted);
+            .Where(a => a.AppointmentDate >= today && a.AppointmentDate < tomorrow && !a.IsDeleted
+                && a.Status != "Cancelled" && a.Status != "NoShow");
 
         if (doctorId.HasValue)
         {
@@ -263,7 +298,9 @@ public class AppointmentsController : BaseApiController
             .ToListAsync();
 
         var currentServing = queue.FirstOrDefault(q => q.Status == "InConsultation");
-        var nextInLine = queue.FirstOrDefault(q => q.Status == "CheckedIn" || q.Status == "Confirmed");
+        // Patients who have physically checked in are called before those who have only booked.
+        var nextInLine = queue.FirstOrDefault(q => q.Status == "CheckedIn")
+            ?? queue.FirstOrDefault(q => q.Status == "Confirmed" || q.Status == "Scheduled");
         var totalScheduled = queue.Count;
         var completedCount = queue.Count(q => q.Status == "Completed");
 

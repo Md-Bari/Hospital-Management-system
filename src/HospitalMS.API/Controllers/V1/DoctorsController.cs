@@ -22,8 +22,6 @@ public class DoctorsController : BaseApiController
         [FromQuery] bool? isAvailable = null)
     {
         var query = _context.Doctors
-            .Include(d => d.Department)
-            .Include(d => d.Schedules.Where(s => s.IsActive))
             .Where(d => !d.IsDeleted && d.IsActive)
             .AsNoTracking();
 
@@ -72,7 +70,8 @@ public class DoctorsController : BaseApiController
                 d.AvatarUrl,
                 d.IsAvailable,
                 d.IsAvailableTelemedicine,
-                Schedules = d.Schedules.Select(s => new
+                // Include() is ignored once a query is projected, so the active filter must live here.
+                Schedules = d.Schedules.Where(s => s.IsActive).OrderBy(s => s.DayOfWeek).Select(s => new
                 {
                     s.Id,
                     Day = s.DayOfWeek.ToString(),
@@ -126,7 +125,7 @@ public class DoctorsController : BaseApiController
                 doctor.AvatarUrl,
                 doctor.IsAvailable,
                 doctor.IsAvailableTelemedicine,
-                Schedules = doctor.Schedules.Where(s => s.IsActive).Select(s => new
+                Schedules = doctor.Schedules.Where(s => s.IsActive).OrderBy(s => s.DayOfWeek).Select(s => new
                 {
                     s.Id,
                     Day = s.DayOfWeek.ToString(),
@@ -183,6 +182,16 @@ public class DoctorsController : BaseApiController
     [HttpPost]
     public async Task<ActionResult> CreateDoctor([FromBody] CreateDoctorRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.FullName) || string.IsNullOrWhiteSpace(request.LicenseNumber) || string.IsNullOrWhiteSpace(request.Specialization))
+            return BadRequest(new { success = false, error = "Full name, license number, and specialization are required." });
+
+        if (request.ConsultationFee < 0)
+            return BadRequest(new { success = false, error = "Consultation fee cannot be negative." });
+
+        var licenseNumber = request.LicenseNumber.Trim();
+        if (await _context.Doctors.IgnoreQueryFilters().AnyAsync(d => d.LicenseNumber == licenseNumber))
+            return Conflict(new { success = false, error = "A doctor with this license number already exists." });
+
         var department = await _context.Departments.FirstOrDefaultAsync(d => d.Id == request.DepartmentId);
         if (department == null)
             return BadRequest(new { success = false, error = "Invalid Department ID." });
@@ -190,9 +199,9 @@ public class DoctorsController : BaseApiController
         var doctor = new Doctor
         {
             FullName = request.FullName.Trim(),
-            LicenseNumber = request.LicenseNumber.Trim(),
+            LicenseNumber = licenseNumber,
             Specialization = request.Specialization.Trim(),
-            Qualifications = request.Qualifications.Trim(),
+            Qualifications = request.Qualifications?.Trim() ?? string.Empty,
             DepartmentId = request.DepartmentId,
             ConsultationFee = request.ConsultationFee,
             FollowUpDays = request.FollowUpDays,
@@ -207,7 +216,20 @@ public class DoctorsController : BaseApiController
         _context.Doctors.Add(doctor);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetDoctorById), new { id = doctor.Id }, new { success = true, data = doctor });
+        return CreatedAtAction(nameof(GetDoctorById), new { id = doctor.Id }, new
+        {
+            success = true,
+            data = new
+            {
+                doctor.Id,
+                doctor.FullName,
+                doctor.LicenseNumber,
+                doctor.Specialization,
+                DepartmentName = department.Name,
+                doctor.ConsultationFee,
+                ConsultationFeeDisplay = $"৳{doctor.ConsultationFee:N0}"
+            }
+        });
     }
 }
 

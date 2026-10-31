@@ -1,3 +1,4 @@
+using HospitalMS.API.Common;
 using HospitalMS.Application.Common.Interfaces;
 using HospitalMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +62,8 @@ public class LaboratoryController : BaseApiController
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
+        (page, pageSize) = NormalizePaging(page, pageSize);
+
         var query = _context.LabOrders
             .Include(o => o.Patient)
             .Include(o => o.Doctor)
@@ -136,7 +139,7 @@ public class LaboratoryController : BaseApiController
                     order.Patient.Id,
                     order.Patient.PatientUid,
                     FullName = order.Patient.FirstName + " " + order.Patient.LastName,
-                    Age = DateTime.UtcNow.Year - order.Patient.DateOfBirth.Year,
+                    Age = ClinicDates.Age(order.Patient.DateOfBirth),
                     order.Patient.Gender,
                     order.Patient.BloodGroup
                 },
@@ -155,7 +158,9 @@ public class LaboratoryController : BaseApiController
                     UnitPriceDisplay = $"৳{i.UnitPrice:N0}",
                     i.ResultValue,
                     i.ReferenceRange,
-                    i.IsAbnormal
+                    i.IsAbnormal,
+                    i.Status,
+                    i.ResultEnteredAt
                 })
             }
         });
@@ -167,14 +172,21 @@ public class LaboratoryController : BaseApiController
         if (request.TestIds == null || request.TestIds.Count == 0)
             return BadRequest(new { success = false, error = "At least one test must be selected." });
 
+        if (!await _context.Patients.AnyAsync(p => p.Id == request.PatientId))
+            return BadRequest(new { success = false, error = "Patient not found." });
+
+        if (request.DoctorId.HasValue && !await _context.Doctors.AnyAsync(d => d.Id == request.DoctorId.Value))
+            return BadRequest(new { success = false, error = "Doctor not found." });
+
+        var testIds = request.TestIds.Distinct().ToList();
         var selectedTests = await _context.LabTests
-            .Where(t => request.TestIds.Contains(t.Id) && t.IsActive)
+            .Where(t => testIds.Contains(t.Id) && t.IsActive)
             .ToListAsync();
 
-        if (selectedTests.Count == 0)
-            return BadRequest(new { success = false, error = "Invalid tests selected." });
+        if (selectedTests.Count != testIds.Count)
+            return BadRequest(new { success = false, error = "One or more selected tests are invalid or inactive." });
 
-        var count = await _context.LabOrders.CountAsync();
+        var count = await _context.LabOrders.IgnoreQueryFilters().CountAsync();
         var orderNumber = $"LAB-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
         var totalAmount = selectedTests.Sum(t => t.Price);
 
@@ -216,20 +228,30 @@ public class LaboratoryController : BaseApiController
         if (order == null)
             return NotFound(new { success = false, error = "Lab order not found." });
 
-        foreach (var res in request.Results)
+        if (order.Status == "Cancelled")
+            return BadRequest(new { success = false, error = "Cannot enter results for a cancelled order." });
+
+        if (request.Results == null || request.Results.Count == 0)
+            return BadRequest(new { success = false, error = "No results supplied." });
+
+        var unknownItem = request.Results.FirstOrDefault(r => order.Items.All(i => i.Id != r.ItemId));
+        if (unknownItem != null)
+            return BadRequest(new { success = false, error = $"Item {unknownItem.ItemId} does not belong to this order." });
+
+        foreach (var res in request.Results.Where(r => !string.IsNullOrWhiteSpace(r.ResultValue)))
         {
-            var item = order.Items.FirstOrDefault(i => i.Id == res.ItemId);
-            if (item != null)
-            {
-                item.ResultValue = res.ResultValue;
-                item.IsAbnormal = res.IsAbnormal;
-            }
+            var item = order.Items.First(i => i.Id == res.ItemId);
+            item.ResultValue = res.ResultValue.Trim();
+            item.IsAbnormal = res.IsAbnormal;
+            item.Status = "Completed";
+            item.ResultEnteredAt = DateTime.UtcNow;
         }
 
-        order.Status = "Completed";
+        // The order is only complete once every test on it has a result.
+        order.Status = order.Items.All(i => i.Status == "Completed") ? "Completed" : "InProcess";
         await _context.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Test results updated successfully." });
+        return Ok(new { success = true, message = "Test results updated successfully.", data = new { order.Id, order.Status } });
     }
 }
 
