@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Clock,
   Users,
+  User,
   Building2,
   ArrowRight,
   Sparkles,
@@ -62,6 +63,14 @@ export default function PublicLandingPage() {
             </div>
 
             <Link
+              href="/register"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-full shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5"
+            >
+              <User className="w-3.5 h-3.5" />
+              Patient Registration (OTP)
+            </Link>
+
+            <Link
               href="/dashboard"
               className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-5 py-2.5 rounded-full shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5"
             >
@@ -101,8 +110,15 @@ export default function PublicLandingPage() {
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <Link
+                href="/register"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-6 py-3.5 rounded-full shadow-lg shadow-blue-600/25 transition-all flex items-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                Register with Email OTP
+              </Link>
+              <Link
                 href="#services"
-                className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-7 py-3.5 rounded-full shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
+                className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-6 py-3.5 rounded-full shadow-lg shadow-teal-600/25 transition-all flex items-center gap-2"
               >
                 Explore Services
                 <ArrowRight className="w-4 h-4" />

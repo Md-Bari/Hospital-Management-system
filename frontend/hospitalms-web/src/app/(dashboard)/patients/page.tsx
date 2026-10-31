@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search, Filter, Phone, Droplet, User, HeartPulse, X, Check } from "lucide-react";
+import { Plus, Search, Filter, Phone, Droplet, User, HeartPulse, X, Check, Mail } from "lucide-react";
 import { patientsApi, PatientItem, getApiError, localDateString } from "@/lib/api-client";
 
 export default function PatientsPage() {
@@ -28,6 +29,7 @@ function PatientsPageContent() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    email: "",
     phone: "",
     gender: "Male",
     bloodGroup: "O+",
@@ -94,6 +96,7 @@ function PatientsPageContent() {
       setFormData({
         firstName: "",
         lastName: "",
+        email: "",
         phone: "",
         gender: "Male",
         bloodGroup: "O+",
@@ -124,13 +127,23 @@ function PatientsPageContent() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Register Patient</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/register"
+            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-bold px-3.5 py-2.5 rounded-xl shadow-sm transition-all text-xs"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Email OTP Registration</span>
+          </Link>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Register Patient</span>
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -319,13 +332,13 @@ function PatientsPageContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Date of Birth</label>
+                  <label className="text-xs font-semibold text-slate-700">Email Address (for SMTP OTP)</label>
                   <input
-                    type="date"
-                    max={localDateString()}
-                    value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    placeholder="patient@domain.com"
                   />
                 </div>
               </div>

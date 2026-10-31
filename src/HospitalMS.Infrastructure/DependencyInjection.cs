@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddTransient<IDateTime, DateTimeService>();
         services.AddTransient<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<ICacheService, RedisCacheService>();
+        services.AddTransient<IEmailService, SmtpEmailService>();
 
         // 5. Database Seeder
         services.AddScoped<DatabaseSeeder>();

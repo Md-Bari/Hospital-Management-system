@@ -118,6 +118,17 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Patient Self-Registration Option */}
+          <div className="mt-5 text-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors bg-blue-50/80 hover:bg-blue-100/80 px-3.5 py-2 rounded-xl border border-blue-200/60"
+            >
+              <span>Are you a patient? Register with Email OTP</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
           {/* Quick Demo Credentials Pill */}
           <div className="mt-6 pt-6 border-t border-slate-100 bg-blue-50/50 -mx-6 -mb-8 p-6 rounded-b-3xl">
             <div className="flex items-start gap-2.5">

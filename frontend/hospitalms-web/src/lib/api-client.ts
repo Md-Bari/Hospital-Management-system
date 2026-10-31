@@ -130,6 +130,27 @@ export function localDateString(date: Date = new Date()): string {
 // HEALTHCARE API CLIENT SERVICES
 // -------------------------------------------------------------
 
+// 0. Patient Self-Registration with Email OTP
+export const authApi = {
+  sendPatientOtp: async (data: { name: string; email: string; phone: string }) => {
+    const res = await apiClient.post("/auth/patient/send-otp", data);
+    return res.data;
+  },
+  verifyPatientOtp: async (data: {
+    name: string;
+    email: string;
+    phone: string;
+    otp: string;
+    password?: string;
+    gender?: string;
+    bloodGroup?: string;
+    address?: string;
+  }) => {
+    const res = await apiClient.post("/auth/patient/verify-otp", data);
+    return res.data;
+  },
+};
+
 // 1. Dashboard APIs
 export const dashboardApi = {
   getStats: async () => {
