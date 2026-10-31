@@ -103,15 +103,13 @@ using (var scope = app.Services.CreateScope())
 // 8. HTTP Pipeline
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger / OpenAPI across all environments for interactive documentation and testing
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HospitalMS API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "HospitalMS API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("HospitalMSCorsPolicy");
 
