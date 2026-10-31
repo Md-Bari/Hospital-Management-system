@@ -16,8 +16,9 @@ export function StatCards() {
   const [data, setData] = useState<StatsData | null>(null);
 
   useEffect(() => {
-    dashboardApi.getStats()
-      .then(res => setData(res))
+    dashboardApi
+      .getStats()
+      .then((res) => setData(res))
       .catch(() => {});
   }, []);
 
@@ -62,8 +63,12 @@ export function StatCards() {
               <Icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold tracking-tight text-slate-900">{stat.value}</p>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">{stat.title}</p>
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
+                {stat.value}
+              </p>
+              <p className="text-xs font-medium text-slate-400 mt-0.5">
+                {stat.title}
+              </p>
             </div>
           </div>
         );

@@ -29,3 +29,4 @@ public class Patient : AuditableEntity, ISoftDeletable
     public ICollection<ClinicalEncounter> Encounters { get; set; } = new List<ClinicalEncounter>();
     public ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
 }
+

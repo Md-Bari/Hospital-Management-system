@@ -42,3 +42,4 @@ public class ClinicalEncounter : AuditableEntity, ISoftDeletable
 
     public Prescription? Prescription { get; set; }
 }
+

@@ -311,3 +311,4 @@ public class RecordPaymentRequest
     public string? PaymentMethod { get; set; } = "Cash"; // Cash, bKash, Nagad, Card
     public string? TransactionReference { get; set; }
 }
+

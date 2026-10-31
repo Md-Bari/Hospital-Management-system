@@ -40,3 +40,4 @@ public class PrescriptionMedicine : BaseEntity
     public string MealInstruction { get; set; } = "After Meal"; // Before Meal, After Meal, With Meal
     public string? SpecialInstructions { get; set; }
 }
+

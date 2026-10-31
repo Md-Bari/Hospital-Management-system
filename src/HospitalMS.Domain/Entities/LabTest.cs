@@ -51,3 +51,4 @@ public class LabOrderItem : BaseEntity
     public string Status { get; set; } = "Pending"; // Pending, Completed
     public DateTime? ResultEnteredAt { get; set; }
 }
+

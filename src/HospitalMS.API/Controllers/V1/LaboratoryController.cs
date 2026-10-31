@@ -253,3 +253,4 @@ public class LabResultItemDto
     public string ResultValue { get; set; } = string.Empty;
     public bool IsAbnormal { get; set; }
 }
+

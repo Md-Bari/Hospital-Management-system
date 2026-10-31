@@ -48,3 +48,4 @@ public class Payment : AuditableEntity
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
     public string Status { get; set; } = "Success";
 }
+

@@ -231,3 +231,4 @@ public class CreateDoctorRequest
     public string? AvatarUrl { get; set; }
     public bool IsAvailableTelemedicine { get; set; } = false;
 }
+

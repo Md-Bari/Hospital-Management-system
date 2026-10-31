@@ -45,3 +45,4 @@ public class DoctorSchedule : BaseEntity
     public int SlotDurationMinutes { get; set; } = 15;
     public bool IsActive { get; set; } = true;
 }
+

@@ -276,3 +276,4 @@ public class UpdatePatientRequest : CreatePatientRequest
 {
     public bool IsActive { get; set; } = true;
 }
+
