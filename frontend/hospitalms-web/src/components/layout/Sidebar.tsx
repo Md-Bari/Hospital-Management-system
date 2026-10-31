@@ -12,6 +12,7 @@ import {
   Pill,
   CreditCard,
   Sparkles,
+  ShieldCheck,
   Link as LinkIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -27,6 +28,7 @@ export const navigationItems = [
   { name: "Laboratory", href: "/laboratory", icon: FlaskConical },
   { name: "Pharmacy", href: "/pharmacy", icon: Pill },
   { name: "Billing", href: "/billing", icon: CreditCard },
+  { name: "Roles & RBAC", href: "/settings/roles", icon: ShieldCheck },
 ];
 
 export function Sidebar() {

@@ -30,5 +30,7 @@ public interface IApplicationDbContext
     DbSet<InvoiceItem> InvoiceItems { get; }
     DbSet<Payment> Payments { get; }
 
+    DbSet<TEntity> Set<TEntity>() where TEntity : class;
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

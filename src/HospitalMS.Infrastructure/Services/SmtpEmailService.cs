@@ -116,3 +116,4 @@ public class SmtpEmailService : IEmailService
         return await SendEmailAsync(toEmail, subject, htmlBody, cancellationToken);
     }
 }
+

@@ -1,7 +1,9 @@
 using System.Security.Claims;
-using HospitalMS.Application.Common.Interfaces;
 using HospitalMS.Application.Features.Auth.Queries.GetCurrentUser;
+using HospitalMS.Domain.Entities;
+using HospitalMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +12,18 @@ namespace HospitalMS.API.Controllers.V1;
 [Authorize]
 public class UsersController : BaseApiController
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
 
-    public UsersController(IApplicationDbContext context)
+    public UsersController(
+        ApplicationDbContext context,
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager)
     {
         _context = context;
+        _userManager = userManager;
+        _roleManager = roleManager;
     }
 
     [HttpGet("me")]
@@ -32,7 +41,11 @@ public class UsersController : BaseApiController
 
     [HttpGet]
     [Authorize(Roles = "SuperAdmin,HospitalAdmin,BranchManager,HRManager")]
-    public async Task<ActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
+    public async Task<ActionResult> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? role = null)
     {
         var query = _context.Users
             .Include(u => u.Branch)
@@ -49,7 +62,7 @@ public class UsersController : BaseApiController
         }
 
         var total = await query.CountAsync();
-        var users = await query
+        var rawUsers = await query
             .OrderByDescending(u => u.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -67,12 +80,41 @@ public class UsersController : BaseApiController
             })
             .ToListAsync();
 
+        var userIds = rawUsers.Select(u => u.Id).ToList();
+
+        // Query UserRoles directly from IdentityDbContext
+        var userRoles = await _context.UserRoles
+            .Where(ur => userIds.Contains(ur.UserId))
+            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name })
+            .ToListAsync();
+
+        var rolesByUser = userRoles.ToLookup(x => x.UserId, x => x.RoleName!);
+
+        var items = rawUsers.Select(u => new
+        {
+            u.Id,
+            u.Email,
+            u.FullName,
+            u.PhoneNumber,
+            u.IsActive,
+            u.CreatedAt,
+            u.LastLoginAt,
+            u.BranchName,
+            u.DepartmentName,
+            Roles = rolesByUser[u.Id].ToList()
+        }).ToList();
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            items = items.Where(u => u.Roles.Contains(role, StringComparer.OrdinalIgnoreCase)).ToList();
+        }
+
         return Ok(new
         {
             success = true,
             data = new
             {
-                items = users,
+                items,
                 total,
                 page,
                 pageSize,
@@ -80,5 +122,75 @@ public class UsersController : BaseApiController
             }
         });
     }
+
+    [HttpPost("{id:guid}/roles")]
+    [Authorize(Roles = "SuperAdmin,HospitalAdmin")]
+    public async Task<ActionResult> AssignUserRoles(Guid id, [FromBody] UpdateUserRolesRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null)
+        {
+            return NotFound(new { success = false, error = "User not found." });
+        }
+
+        // Validate requested roles exist
+        foreach (var roleName in request.Roles)
+        {
+            if (!await _roleManager.RoleExistsAsync(roleName))
+            {
+                return BadRequest(new { success = false, error = $"Role '{roleName}' does not exist." });
+            }
+        }
+
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+        if (!removeResult.Succeeded)
+        {
+            return BadRequest(new { success = false, error = "Failed to clear current roles." });
+        }
+
+        var addResult = await _userManager.AddToRolesAsync(user, request.Roles);
+        if (!addResult.Succeeded)
+        {
+            return BadRequest(new { success = false, error = "Failed to assign new roles." });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            message = "User roles updated successfully.",
+            data = new { userId = user.Id, roles = request.Roles }
+        });
+    }
+
+    [HttpPut("{id:guid}/status")]
+    [Authorize(Roles = "SuperAdmin,HospitalAdmin")]
+    public async Task<ActionResult> ToggleUserStatus(Guid id, [FromBody] ToggleUserStatusRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null)
+        {
+            return NotFound(new { success = false, error = "User not found." });
+        }
+
+        user.IsActive = request.IsActive;
+        await _userManager.UpdateAsync(user);
+
+        return Ok(new
+        {
+            success = true,
+            message = $"User has been {(request.IsActive ? "activated" : "deactivated")} successfully.",
+            data = new { userId = user.Id, isActive = user.IsActive }
+        });
+    }
 }
 
+public class UpdateUserRolesRequest
+{
+    public List<string> Roles { get; set; } = new();
+}
+
+public class ToggleUserStatusRequest
+{
+    public bool IsActive { get; set; }
+}

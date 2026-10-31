@@ -366,17 +366,6 @@ public class AuthController : BaseApiController
 
         Response.Cookies.Append("refreshToken", token, cookieOptions);
     }
-
-    private string GetClientIpAddress()
-    {
-        if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwarded))
-        {
-            var ip = forwarded.FirstOrDefault()?.Split(',').FirstOrDefault()?.Trim();
-            if (!string.IsNullOrWhiteSpace(ip)) return ip;
-        }
-
-        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-    }
 }
 
 public class OtpRecord

@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -85,6 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user?.roles.includes(role) ?? false;
   };
 
+  const hasAnyRole = (roles: string[]): boolean => {
+    return roles.some((role) => user?.roles.includes(role)) ?? false;
+  };
+
   const hasPermission = (permission: string): boolean => {
     return user?.permissions.includes(permission) ?? false;
   };
@@ -98,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         hasRole,
+        hasAnyRole,
         hasPermission,
       }}
     >

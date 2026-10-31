@@ -492,3 +492,81 @@ export const billingApi = {
     return res.data.data;
   },
 };
+
+// 9. Roles and RBAC APIs
+export interface RoleListItem {
+  id: string;
+  name: string;
+  description: string;
+  isSystemRole: boolean;
+  userCount: number;
+  permissionsCount: number;
+}
+
+export interface PermissionGroup {
+  module: string;
+  permissions: Array<{
+    id: string;
+    code: string;
+    action: string;
+    description: string;
+    isAssigned?: boolean;
+  }>;
+}
+
+export interface RoleDetailResponse {
+  roleName: string;
+  roleDescription: string;
+  assignedPermissions: string[];
+  catalog: PermissionGroup[];
+}
+
+export const rolesApi = {
+  getRoles: async (): Promise<RoleListItem[]> => {
+    const res = await apiClient.get("/roles");
+    return res.data.data;
+  },
+  getAllPermissions: async (): Promise<PermissionGroup[]> => {
+    const res = await apiClient.get("/roles/permissions");
+    return res.data.data;
+  },
+  getRolePermissions: async (roleName: string): Promise<RoleDetailResponse> => {
+    const res = await apiClient.get(`/roles/${encodeURIComponent(roleName)}/permissions`);
+    return res.data.data;
+  },
+  updateRolePermissions: async (roleName: string, permissionCodes: string[]) => {
+    const res = await apiClient.put(`/roles/${encodeURIComponent(roleName)}/permissions`, {
+      permissionCodes,
+    });
+    return res.data.data;
+  },
+};
+
+// 10. Users Management APIs
+export interface UserListItem {
+  id: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+  branchName?: string;
+  departmentName?: string;
+  roles: string[];
+}
+
+export const usersApi = {
+  getUsers: async (params?: { page?: number; pageSize?: number; search?: string; role?: string }) => {
+    const res = await apiClient.get("/users", { params });
+    return res.data.data;
+  },
+  assignRoles: async (userId: string, roles: string[]) => {
+    const res = await apiClient.post(`/users/${userId}/roles`, { roles });
+    return res.data.data;
+  },
+  toggleStatus: async (userId: string, isActive: boolean) => {
+    const res = await apiClient.put(`/users/${userId}/status`, { isActive });
+    return res.data.data;
+  },
+};
