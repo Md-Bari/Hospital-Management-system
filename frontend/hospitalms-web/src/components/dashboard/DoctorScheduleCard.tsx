@@ -1,45 +1,63 @@
-import { MoreHorizontal } from "lucide-react";
+"use client";
 
-interface DoctorItem {
+import { useEffect, useState } from "react";
+import { MoreHorizontal } from "lucide-react";
+import { dashboardApi } from "@/lib/api-client";
+
+interface DoctorScheduleItem {
+  id: string;
   name: string;
   department: string;
-  time: string;
-  status: "Available" | "Unavailable";
-  initials: string;
+  specialization?: string;
+  avatarUrl?: string;
+  isAvailable: boolean;
+  timeSlot: string;
 }
 
-const doctors: DoctorItem[] = [
+const fallbackDoctors = [
   {
+    id: "1",
     name: "Dr. James Thompson",
     department: "General Medicine",
-    time: "09:00 AM - 12:00 PM",
-    status: "Available",
-    initials: "JT",
+    timeSlot: "09:00 AM - 12:00 PM",
+    isAvailable: true,
   },
   {
+    id: "2",
     name: "Dr. Michael Anderson",
     department: "Orthopedics",
-    time: "10:00 AM - 01:00 PM",
-    status: "Unavailable",
-    initials: "MA",
+    timeSlot: "10:00 AM - 01:00 PM",
+    isAvailable: false,
   },
   {
+    id: "3",
     name: "Dr. Olivia Martinez",
     department: "Cardiology",
-    time: "10:00 AM - 01:00 PM",
-    status: "Available",
-    initials: "OM",
+    timeSlot: "10:00 AM - 01:00 PM",
+    isAvailable: true,
   },
   {
+    id: "4",
     name: "Dr. Emily Carter",
     department: "Pediatrics",
-    time: "02:00 PM - 04:00 PM",
-    status: "Available",
-    initials: "EC",
+    timeSlot: "02:00 PM - 04:00 PM",
+    isAvailable: true,
   },
 ];
 
 export function DoctorScheduleCard() {
+  const [doctors, setDoctors] = useState<DoctorScheduleItem[]>(fallbackDoctors);
+
+  useEffect(() => {
+    dashboardApi.getDoctorSchedule()
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          setDoctors(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between">
       {/* Header */}
@@ -52,34 +70,42 @@ export function DoctorScheduleCard() {
 
       {/* List */}
       <div className="space-y-4">
-        {doctors.map((doc) => (
-          <div key={doc.name} className="flex items-center justify-between py-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">
-                {doc.initials}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900 leading-tight">{doc.name}</p>
-                <p className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">{doc.department}</p>
-              </div>
-            </div>
+        {doctors.map((doc) => {
+          const initials = doc.name
+            .replace(/^Dr\.\s*/i, "")
+            .split(" ")
+            .map(n => n[0])
+            .join("")
+            .slice(0, 2);
 
-            <div className="text-right flex flex-col items-end gap-1">
-              <span
-                className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
-                  doc.status === "Available"
-                    ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                    : "bg-rose-50 text-rose-600 border-rose-100"
-                }`}
-              >
-                {doc.status}
-              </span>
-              <span className="text-[11px] font-medium text-slate-400">{doc.time}</span>
+          return (
+            <div key={doc.id || doc.name} className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs flex-shrink-0">
+                  {initials}
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 leading-tight">{doc.name}</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">{doc.department}</p>
+                </div>
+              </div>
+
+              <div className="text-right flex flex-col items-end gap-1">
+                <span
+                  className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                    doc.isAvailable
+                      ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                      : "bg-rose-50 text-rose-500 border border-rose-100"
+                  }`}
+                >
+                  {doc.isAvailable ? "Available" : "Unavailable"}
+                </span>
+                <p className="text-[11px] font-medium text-slate-400">{doc.timeSlot}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
-

@@ -1,34 +1,54 @@
-import { Users, UserCheck, Ambulance, Calendar, Bed } from "lucide-react";
+"use client";
 
-const stats = [
-  {
-    title: "Patients",
-    value: "600",
-    icon: Users,
-  },
-  {
-    title: "Staff Members",
-    value: "150",
-    icon: UserCheck,
-  },
-  {
-    title: "Vehicles",
-    value: "35",
-    icon: Ambulance,
-  },
-  {
-    title: "Appointment",
-    value: "120",
-    icon: Calendar,
-  },
-  {
-    title: "Operations",
-    value: "28",
-    icon: Bed,
-  },
-];
+import { useEffect, useState } from "react";
+import { Users, UserCheck, Ambulance, Calendar, Bed } from "lucide-react";
+import { dashboardApi } from "@/lib/api-client";
+
+interface StatsData {
+  patients: { count: number; label: string };
+  staffMembers: { count: number; label: string };
+  vehicles: { count: number; label: string };
+  appointments: { count: number; label: string };
+  operations: { count: number; label: string };
+}
 
 export function StatCards() {
+  const [data, setData] = useState<StatsData | null>(null);
+
+  useEffect(() => {
+    dashboardApi.getStats()
+      .then(res => setData(res))
+      .catch(() => {});
+  }, []);
+
+  const stats = [
+    {
+      title: "Patients",
+      value: data?.patients.count ?? "600",
+      icon: Users,
+    },
+    {
+      title: "Staff Members",
+      value: data?.staffMembers.count ?? "150",
+      icon: UserCheck,
+    },
+    {
+      title: "Vehicles",
+      value: data?.vehicles.count ?? "35",
+      icon: Ambulance,
+    },
+    {
+      title: "Appointment",
+      value: data?.appointments.count ?? "120",
+      icon: Calendar,
+    },
+    {
+      title: "Operations",
+      value: data?.operations.count ?? "24",
+      icon: Bed,
+    },
+  ];
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       {stats.map((stat) => {
@@ -51,4 +71,3 @@ export function StatCards() {
     </div>
   );
 }
-

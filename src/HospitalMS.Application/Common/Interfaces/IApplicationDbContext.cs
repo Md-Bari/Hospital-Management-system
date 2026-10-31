@@ -15,6 +15,20 @@ public interface IApplicationDbContext
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<AuditLog> AuditLogs { get; }
 
+    DbSet<Patient> Patients { get; }
+    DbSet<Doctor> Doctors { get; }
+    DbSet<DoctorSchedule> DoctorSchedules { get; }
+    DbSet<Appointment> Appointments { get; }
+    DbSet<ClinicalEncounter> ClinicalEncounters { get; }
+    DbSet<Prescription> Prescriptions { get; }
+    DbSet<PrescriptionMedicine> PrescriptionMedicines { get; }
+    DbSet<LabTest> LabTests { get; }
+    DbSet<LabOrder> LabOrders { get; }
+    DbSet<LabOrderItem> LabOrderItems { get; }
+    DbSet<Medicine> Medicines { get; }
+    DbSet<Invoice> Invoices { get; }
+    DbSet<InvoiceItem> InvoiceItems { get; }
+    DbSet<Payment> Payments { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
-

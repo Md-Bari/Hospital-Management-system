@@ -31,6 +31,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    // Healthcare Operational Entities
+    public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<Doctor> Doctors => Set<Doctor>();
+    public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
+    public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<ClinicalEncounter> ClinicalEncounters => Set<ClinicalEncounter>();
+    public DbSet<Prescription> Prescriptions => Set<Prescription>();
+    public DbSet<PrescriptionMedicine> PrescriptionMedicines => Set<PrescriptionMedicine>();
+    public DbSet<LabTest> LabTests => Set<LabTest>();
+    public DbSet<LabOrder> LabOrders => Set<LabOrder>();
+    public DbSet<LabOrderItem> LabOrderItems => Set<LabOrderItem>();
+    public DbSet<Medicine> Medicines => Set<Medicine>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -152,6 +168,221 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasIndex(al => al.Timestamp);
         });
 
+        // Patient Entity
+        builder.Entity<Patient>(entity =>
+        {
+            entity.ToTable("pat_patients");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.PatientUid).HasMaxLength(50).IsRequired();
+            entity.HasIndex(p => p.PatientUid).IsUnique();
+            entity.Property(p => p.Phone).HasMaxLength(20).IsRequired();
+            entity.HasIndex(p => p.Phone);
+        });
+
+        // Doctor Entity
+        builder.Entity<Doctor>(entity =>
+        {
+            entity.ToTable("cln_doctors");
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.FullName).HasMaxLength(150).IsRequired();
+            entity.Property(d => d.ConsultationFee).HasPrecision(18, 2);
+
+            entity.HasOne(d => d.Department)
+                .WithMany()
+                .HasForeignKey(d => d.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.User)
+                .WithOne()
+                .HasForeignKey<Doctor>(d => d.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<DoctorSchedule>(entity =>
+        {
+            entity.ToTable("cln_doctor_schedules");
+            entity.HasKey(s => s.Id);
+
+            entity.HasOne(s => s.Doctor)
+                .WithMany(d => d.Schedules)
+                .HasForeignKey(s => s.DoctorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Appointment Entity
+        builder.Entity<Appointment>(entity =>
+        {
+            entity.ToTable("cln_appointments");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.AppointmentNumber).HasMaxLength(50).IsRequired();
+            entity.HasIndex(a => a.AppointmentNumber).IsUnique();
+            entity.Property(a => a.FeeAmount).HasPrecision(18, 2);
+
+            entity.HasOne(a => a.Patient)
+                .WithMany(p => p.Appointments)
+                .HasForeignKey(a => a.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.Doctor)
+                .WithMany(d => d.Appointments)
+                .HasForeignKey(a => a.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Clinical Encounter Entity
+        builder.Entity<ClinicalEncounter>(entity =>
+        {
+            entity.ToTable("cln_encounters");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EncounterNumber).HasMaxLength(50).IsRequired();
+
+            entity.HasOne(e => e.Patient)
+                .WithMany(p => p.Encounters)
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Doctor)
+                .WithMany(d => d.Encounters)
+                .HasForeignKey(e => e.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Appointment)
+                .WithMany()
+                .HasForeignKey(e => e.AppointmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Prescription Entity
+        builder.Entity<Prescription>(entity =>
+        {
+            entity.ToTable("cln_prescriptions");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.PrescriptionNumber).HasMaxLength(50).IsRequired();
+
+            entity.HasOne(p => p.Patient)
+                .WithMany(pt => pt.Prescriptions)
+                .HasForeignKey(p => p.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.Doctor)
+                .WithMany()
+                .HasForeignKey(p => p.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.Encounter)
+                .WithOne(e => e.Prescription)
+                .HasForeignKey<Prescription>(p => p.EncounterId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<PrescriptionMedicine>(entity =>
+        {
+            entity.ToTable("cln_prescription_medicines");
+            entity.HasKey(pm => pm.Id);
+
+            entity.HasOne(pm => pm.Prescription)
+                .WithMany(p => p.Medicines)
+                .HasForeignKey(pm => pm.PrescriptionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Lab Test & Lab Order Entities
+        builder.Entity<LabTest>(entity =>
+        {
+            entity.ToTable("diag_lab_tests");
+            entity.HasKey(lt => lt.Id);
+            entity.Property(lt => lt.Code).HasMaxLength(50).IsRequired();
+            entity.HasIndex(lt => lt.Code).IsUnique();
+            entity.Property(lt => lt.Price).HasPrecision(18, 2);
+        });
+
+        builder.Entity<LabOrder>(entity =>
+        {
+            entity.ToTable("diag_lab_orders");
+            entity.HasKey(lo => lo.Id);
+            entity.Property(lo => lo.OrderNumber).HasMaxLength(50).IsRequired();
+            entity.Property(lo => lo.TotalAmount).HasPrecision(18, 2);
+
+            entity.HasOne(lo => lo.Patient)
+                .WithMany()
+                .HasForeignKey(lo => lo.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(lo => lo.Doctor)
+                .WithMany()
+                .HasForeignKey(lo => lo.DoctorId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<LabOrderItem>(entity =>
+        {
+            entity.ToTable("diag_lab_order_items");
+            entity.HasKey(loi => loi.Id);
+            entity.Property(loi => loi.UnitPrice).HasPrecision(18, 2);
+
+            entity.HasOne(loi => loi.LabOrder)
+                .WithMany(lo => lo.Items)
+                .HasForeignKey(loi => loi.LabOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(loi => loi.LabTest)
+                .WithMany()
+                .HasForeignKey(loi => loi.LabTestId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Pharmacy Medicine Entity
+        builder.Entity<Medicine>(entity =>
+        {
+            entity.ToTable("phm_medicines");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.BrandName).HasMaxLength(150).IsRequired();
+            entity.Property(m => m.UnitPrice).HasPrecision(18, 2);
+        });
+
+        // Billing Entities
+        builder.Entity<Invoice>(entity =>
+        {
+            entity.ToTable("bil_invoices");
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.InvoiceNumber).HasMaxLength(50).IsRequired();
+            entity.Property(i => i.SubTotal).HasPrecision(18, 2);
+            entity.Property(i => i.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(i => i.TaxAmount).HasPrecision(18, 2);
+            entity.Property(i => i.TotalAmount).HasPrecision(18, 2);
+            entity.Property(i => i.PaidAmount).HasPrecision(18, 2);
+
+            entity.HasOne(i => i.Patient)
+                .WithMany()
+                .HasForeignKey(i => i.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<InvoiceItem>(entity =>
+        {
+            entity.ToTable("bil_invoice_items");
+            entity.HasKey(ii => ii.Id);
+            entity.Property(ii => ii.UnitPrice).HasPrecision(18, 2);
+
+            entity.HasOne(ii => ii.Invoice)
+                .WithMany(i => i.Items)
+                .HasForeignKey(ii => ii.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Payment>(entity =>
+        {
+            entity.ToTable("bil_payments");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.PaymentNumber).HasMaxLength(50).IsRequired();
+            entity.Property(p => p.Amount).HasPrecision(18, 2);
+
+            entity.HasOne(p => p.Invoice)
+                .WithMany(i => i.Payments)
+                .HasForeignKey(p => p.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // Global Soft Delete Filter
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
@@ -182,4 +413,3 @@ public static class ModelBuilderExtensions
         entityType.SetQueryFilter(lambda);
     }
 }
-

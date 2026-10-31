@@ -1,29 +1,64 @@
-import { ArrowRight, MoreHorizontal, Flame, Ambulance, Sparkles, UserCheck } from "lucide-react";
+"use client";
 
-const reports = [
+import { useEffect, useState } from "react";
+import { ArrowRight, MoreHorizontal, Flame, Ambulance, Sparkles, UserCheck } from "lucide-react";
+import { dashboardApi } from "@/lib/api-client";
+
+interface AlertItem {
+  id: number;
+  title: string;
+  time: string;
+  type?: string;
+}
+
+const fallbackAlerts: AlertItem[] = [
   {
+    id: 1,
     title: "Oxygen Cylinder Refill Needed",
     time: "10 minutes ago",
-    icon: Flame,
+    type: "oxygen",
   },
   {
+    id: 2,
     title: "Ambulance Dispatched",
     time: "30 minutes ago",
-    icon: Ambulance,
+    type: "ambulance",
   },
   {
+    id: 3,
     title: "Room Cleaning Needed",
     time: "1 hour ago",
-    icon: Sparkles,
+    type: "cleaning",
   },
   {
+    id: 4,
     title: "Patient Transport Required",
     time: "Yesterday",
-    icon: UserCheck,
+    type: "transport",
   },
 ];
 
 export function OperationalAlerts() {
+  const [alerts, setAlerts] = useState<AlertItem[]>(fallbackAlerts);
+
+  useEffect(() => {
+    dashboardApi.getAlerts()
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          setAlerts(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const getIcon = (type?: string, title?: string) => {
+    const t = (type || title || "").toLowerCase();
+    if (t.includes("ambulance")) return Ambulance;
+    if (t.includes("cleaning") || t.includes("room")) return Sparkles;
+    if (t.includes("transport") || t.includes("patient")) return UserCheck;
+    return Flame;
+  };
+
   return (
     <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between">
       {/* Header */}
@@ -36,11 +71,11 @@ export function OperationalAlerts() {
 
       {/* List */}
       <div className="space-y-3.5">
-        {reports.map((report) => {
-          const Icon = report.icon;
+        {alerts.map((report) => {
+          const Icon = getIcon(report.type, report.title);
           return (
             <div
-              key={report.title}
+              key={report.id || report.title}
               className="flex items-center justify-between p-2 rounded-2xl hover:bg-slate-50 transition-colors group cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -65,4 +100,3 @@ export function OperationalAlerts() {
     </div>
   );
 }
-
