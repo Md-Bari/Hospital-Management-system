@@ -13,13 +13,15 @@ import {
   CreditCard,
   Sparkles,
   ShieldCheck,
+  PhoneCall,
   Link as LinkIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { appointmentsApi } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 
-export const navigationItems = [
+export const staffNavigationItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Patients", href: "/patients", icon: Users },
   { name: "Appointments", href: "/appointments", icon: Calendar },
@@ -31,9 +33,29 @@ export const navigationItems = [
   { name: "Roles & RBAC", href: "/settings/roles", icon: ShieldCheck },
 ];
 
+export const patientNavigationItems = [
+  { name: "My Health Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Book Appointment", href: "/appointments", icon: Calendar },
+  { name: "Specialist Doctors", href: "/doctors", icon: Stethoscope },
+  { name: "My Prescriptions", href: "/clinical", icon: FileText },
+  { name: "My Lab Reports", href: "/laboratory", icon: FlaskConical },
+  { name: "My Invoices & Bills", href: "/billing", icon: CreditCard },
+];
+
+export const navigationItems = staffNavigationItems;
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
+
+  const isPatient =
+    user?.roles?.includes("Patient") &&
+    !user?.roles?.includes("SuperAdmin") &&
+    !user?.roles?.includes("HospitalAdmin") &&
+    !user?.roles?.includes("BranchManager");
+
+  const currentNavItems = isPatient ? patientNavigationItems : staffNavigationItems;
 
   useEffect(() => {
     appointmentsApi
@@ -56,14 +78,19 @@ export function Sidebar() {
           <div>
             <span className="text-xl font-bold tracking-tight text-slate-900">Hospital</span>
             <span className="text-xl font-bold tracking-tight text-blue-600">Link</span>
+            {isPatient && (
+              <span className="block text-[10px] font-bold text-teal-600 uppercase tracking-wider">
+                Patient Portal
+              </span>
+            )}
           </div>
         </div>
 
         {/* Navigation Menu */}
         <nav className="space-y-1.5">
-          {navigationItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            const badge = item.href === "/appointments" && waitingCount ? waitingCount : null;
+          {currentNavItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+            const badge = item.href === "/appointments" && waitingCount && !isPatient ? waitingCount : null;
             const Icon = item.icon;
 
             return (
@@ -95,18 +122,34 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Upgrade / Agency Feature Card (as seen in Image 1 bottom left) */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-4 text-white shadow-lg shadow-blue-600/15">
-        <div className="absolute top-2 right-2 opacity-15">
-          <Sparkles className="w-16 h-16 text-white" />
+      {/* Bottom Information Card (Adaptive for Patient vs Staff) */}
+      {isPatient ? (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 p-4 text-white shadow-lg shadow-red-600/15">
+          <div className="flex items-center gap-2 mb-1.5">
+            <PhoneCall className="w-4 h-4 text-red-200" />
+            <p className="text-xs uppercase font-bold tracking-wider text-red-200">24/7 Helpline</p>
+          </div>
+          <p className="text-sm font-black">+880 2 9660000</p>
+          <p className="text-[11px] text-red-100 mt-0.5">Ambulance & Trauma Center</p>
+          <a
+            href="tel:+88029660000"
+            className="mt-3 block text-center w-full bg-white text-red-600 text-xs font-bold py-2 rounded-xl hover:bg-red-50 transition-colors shadow-sm"
+          >
+            Emergency Call
+          </a>
         </div>
-        <p className="text-xs uppercase font-semibold tracking-wider text-blue-200">Agency Pro</p>
-        <p className="text-sm font-bold mt-0.5">Enterprise Hospital Management</p>
-        <button className="mt-3.5 w-full bg-white text-blue-600 text-xs font-semibold py-2 rounded-xl hover:bg-blue-50 transition-colors shadow-sm">
-          Upgrade
-        </button>
-      </div>
+      ) : (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-4 text-white shadow-lg shadow-blue-600/15">
+          <div className="absolute top-2 right-2 opacity-15">
+            <Sparkles className="w-16 h-16 text-white" />
+          </div>
+          <p className="text-xs uppercase font-semibold tracking-wider text-blue-200">Agency Pro</p>
+          <p className="text-sm font-bold mt-0.5">Enterprise Hospital Management</p>
+          <button className="mt-3.5 w-full bg-white text-blue-600 text-xs font-semibold py-2 rounded-xl hover:bg-blue-50 transition-colors shadow-sm">
+            Upgrade
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
-

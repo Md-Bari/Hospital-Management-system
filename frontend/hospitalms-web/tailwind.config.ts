@@ -33,12 +33,22 @@ const config: Config = {
           500: "#F97316",
           600: "#EA580C",
         },
+        navy: {
+          600: "#1A4A8F",
+          700: "#123C7A",
+          800: "#0E2F63", // Public site headings & dark bands
+          900: "#0A2149",
+          950: "#06152F",
+        },
         mint: {
           50: "#ECFDF5",
           100: "#D1FAE5",
           500: "#10B981", // "Available" badge
           600: "#059669",
         },
+      },
+      fontFamily: {
+        display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         "2xl": "1rem",
@@ -47,6 +57,7 @@ const config: Config = {
       boxShadow: {
         subtle: "0 2px 12px rgba(0, 0, 0, 0.03)",
         card: "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+        float: "0 24px 60px -20px rgba(14, 47, 99, 0.25)",
       },
     },
   },

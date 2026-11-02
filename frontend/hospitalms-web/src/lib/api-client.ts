@@ -198,6 +198,10 @@ export interface PatientItem {
 }
 
 export const patientsApi = {
+  getMe: async () => {
+    const res = await apiClient.get("/patients/me");
+    return res.data.data;
+  },
   getPatients: async (params?: { page?: number; pageSize?: number; search?: string; gender?: string; bloodGroup?: string }) => {
     const res = await apiClient.get("/patients", { params });
     return res.data.data;

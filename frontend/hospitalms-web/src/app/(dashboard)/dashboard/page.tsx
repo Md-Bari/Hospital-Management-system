@@ -1,3 +1,7 @@
+"use client";
+
+import { useAuth } from "@/context/AuthContext";
+import { PatientPortalDashboard } from "@/components/dashboard/PatientPortalDashboard";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { DepartmentRadialChart } from "@/components/dashboard/DepartmentRadialChart";
@@ -6,6 +10,19 @@ import { OperationalAlerts } from "@/components/dashboard/OperationalAlerts";
 import { MiniCalendarAgenda } from "@/components/dashboard/MiniCalendarAgenda";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  
+  // If the user has Patient role and is not an Administrator or Staff, render the dedicated Patient Portal
+  const isPatient =
+    user?.roles?.includes("Patient") &&
+    !user?.roles?.includes("SuperAdmin") &&
+    !user?.roles?.includes("HospitalAdmin") &&
+    !user?.roles?.includes("BranchManager");
+
+  if (isPatient) {
+    return <PatientPortalDashboard />;
+  }
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* 1. Top Stat Cards Row */}
@@ -36,4 +53,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

@@ -266,25 +266,42 @@ public class AuthController : BaseApiController
             var pwd = !string.IsNullOrWhiteSpace(request.Password) ? request.Password : $"P@ss{Random.Shared.Next(1000, 9999)}#HMS";
             var userResult = await _userManager.CreateAsync(user, pwd);
 
-            if (userResult.Succeeded)
+            if (!userResult.Succeeded)
             {
-                // Ensure Patient role exists
-                if (!await _roleManager.RoleExistsAsync(SelfServiceRole))
-                {
-                    await _roleManager.CreateAsync(new ApplicationRole { Name = SelfServiceRole, Description = "Hospital Registered Patient" });
-                }
-                await _userManager.AddToRoleAsync(user, SelfServiceRole);
+                var errors = string.Join(" ", userResult.Errors.Select(e => e.Description));
+                return BadRequest(new { success = false, error = $"Could not create the patient portal account. {errors}".Trim() });
             }
         }
         else
         {
             user.EmailConfirmed = true;
+            user.IsActive = true;
             await _userManager.UpdateAsync(user);
+        }
+
+        // Ensure the self-service Patient role exists and is assigned
+        if (!await _roleManager.RoleExistsAsync(SelfServiceRole))
+        {
+            await _roleManager.CreateAsync(new ApplicationRole { Name = SelfServiceRole, Description = "Hospital Registered Patient" });
+        }
+
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        if (!currentRoles.Contains(SelfServiceRole, StringComparer.OrdinalIgnoreCase))
+        {
+            await _userManager.AddToRoleAsync(user, SelfServiceRole);
         }
 
         // Generate JWT Access and Refresh Tokens
         var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = _jwtTokenGenerator.GenerateAccessToken(user, roles, Array.Empty<string>());
+        var roleNames = roles.ToList();
+        var permissions = await _context.RolePermissions
+            .Include(rp => rp.Role)
+            .Include(rp => rp.Permission)
+            .Where(rp => roleNames.Contains(rp.Role.Name!))
+            .Select(rp => rp.Permission.Code)
+            .Distinct()
+            .ToListAsync();
+        var accessToken = _jwtTokenGenerator.GenerateAccessToken(user, roles, permissions);
         var refreshToken = _jwtTokenGenerator.GenerateRefreshToken(user.Id, GetClientIpAddress());
 
         _context.RefreshTokens.Add(refreshToken);
@@ -305,8 +322,19 @@ public class AuthController : BaseApiController
                 phone = patient.Phone,
                 bloodGroup = patient.BloodGroup,
                 token = accessToken,
+                accessToken,
                 refreshToken = refreshToken.Token,
-                expiresAt = DateTime.UtcNow.AddMinutes(15)
+                expiresAt = DateTime.UtcNow.AddMinutes(15),
+                refreshTokenExpiresAt = refreshToken.ExpiresAt,
+                user = new
+                {
+                    id = user.Id,
+                    email = user.Email ?? string.Empty,
+                    fullName = user.FullName,
+                    phoneNumber = user.PhoneNumber,
+                    roles,
+                    permissions
+                }
             }
         });
     }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using HospitalMS.API.Common;
 using HospitalMS.Application.Common.Interfaces;
 using HospitalMS.Domain.Entities;
@@ -13,6 +14,143 @@ public class PatientsController : BaseApiController
     public PatientsController(IApplicationDbContext context)
     {
         _context = context;
+    }
+
+    [HttpGet("me")]
+    public async Task<ActionResult> GetMyPatientProfile()
+    {
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+        var phone = User.FindFirstValue(ClaimTypes.MobilePhone) ?? User.FindFirstValue("phone");
+
+        // The phone claim is not always issued; fall back to the linked account record.
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(phone))
+        {
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            if (Guid.TryParse(userIdValue, out var userId))
+            {
+                var account = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                email ??= account?.Email;
+                phone ??= account?.PhoneNumber;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(phone))
+        {
+            return NotFound(new { success = false, error = "Patient record not found." });
+        }
+
+        var normalizedEmail = email?.Trim().ToLowerInvariant();
+
+        var patient = await _context.Patients
+            .Include(p => p.Appointments.OrderByDescending(a => a.AppointmentDate).Take(10))
+                .ThenInclude(a => a.Doctor)
+            .Include(p => p.Prescriptions.OrderByDescending(pr => pr.CreatedAt).Take(5))
+                .ThenInclude(pr => pr.Medicines)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => !p.IsDeleted &&
+                ((normalizedEmail != null && p.Email != null && p.Email.ToLower() == normalizedEmail) ||
+                 (!string.IsNullOrWhiteSpace(phone) && p.Phone == phone)));
+
+        if (patient == null)
+        {
+            return NotFound(new { success = false, error = "No patient record is linked to this account yet." });
+        }
+
+        var recentInvoices = await _context.Invoices
+            .Where(inv => inv.PatientId == patient.Id)
+            .OrderByDescending(inv => inv.CreatedAt)
+            .Take(5)
+            .Select(inv => new
+            {
+                inv.Id,
+                inv.InvoiceNumber,
+                inv.TotalAmount,
+                inv.PaidAmount,
+                inv.DueAmount,
+                inv.Status,
+                inv.CreatedAt
+            })
+            .ToListAsync();
+
+        var recentLabOrders = await _context.LabOrders
+            .Where(lo => lo.PatientId == patient.Id)
+            .Include(lo => lo.Items)
+                .ThenInclude(i => i.LabTest)
+            .OrderByDescending(lo => lo.CreatedAt)
+            .Take(5)
+            .Select(lo => new
+            {
+                lo.Id,
+                lo.OrderNumber,
+                lo.Status,
+                lo.CreatedAt,
+                Items = lo.Items.Select(i => new
+                {
+                    i.Id,
+                    TestName = i.LabTest.Name,
+                    TestCode = i.LabTest.Code,
+                    i.Status,
+                    i.ResultValue,
+                    i.ReferenceRange
+                })
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                patient.Id,
+                patient.PatientUid,
+                patient.FirstName,
+                patient.LastName,
+                FullName = patient.FirstName + " " + patient.LastName,
+                patient.DateOfBirth,
+                Age = ClinicDates.Age(patient.DateOfBirth),
+                patient.Gender,
+                patient.BloodGroup,
+                patient.Phone,
+                patient.Email,
+                patient.Address,
+                patient.EmergencyContactName,
+                patient.EmergencyContactPhone,
+                patient.KnownAllergies,
+                patient.ChronicConditions,
+                Appointments = patient.Appointments.Select(a => new
+                {
+                    a.Id,
+                    a.AppointmentNumber,
+                    a.AppointmentDate,
+                    a.SlotStartTime,
+                    a.SlotEndTime,
+                    a.Status,
+                    a.QueueSerialNumber,
+                    DoctorName = a.Doctor.FullName,
+                    DoctorSpecialization = a.Doctor.Specialization
+                }),
+                Prescriptions = patient.Prescriptions.Select(pr => new
+                {
+                    pr.Id,
+                    pr.PrescriptionNumber,
+                    Diagnosis = pr.DoctorNotes,
+                    Advice = pr.LifestyleAdvice,
+                    pr.CreatedAt,
+                    pr.Status,
+                    Medicines = pr.Medicines.Select(m => new
+                    {
+                        m.Id,
+                        m.MedicineName,
+                        m.Dosage,
+                        m.Frequency,
+                        m.DurationDays,
+                        Instructions = $"{m.MealInstruction} {m.SpecialInstructions}".Trim()
+                    })
+                }),
+                LabOrders = recentLabOrders,
+                Invoices = recentInvoices
+            }
+        });
     }
 
     [HttpGet]

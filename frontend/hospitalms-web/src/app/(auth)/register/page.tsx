@@ -148,9 +148,22 @@ export default function PatientRegisterPage() {
 
       if (res.success) {
         setSuccessInfo(res.data);
-        if (typeof window !== "undefined" && res.data?.token) {
-          localStorage.setItem("hospitalms_token", res.data.token);
-          localStorage.setItem("hospitalms_refresh", res.data.refreshToken);
+        if (typeof window !== "undefined" && (res.data?.token || res.data?.accessToken)) {
+          const accessToken = res.data.accessToken || res.data.token;
+          localStorage.setItem("hospitalms_token", accessToken);
+          if (res.data.refreshToken) {
+            localStorage.setItem("hospitalms_refresh", res.data.refreshToken);
+          }
+
+          const portalUser = res.data.user ?? {
+            id: res.data.patientId ?? "",
+            email: res.data.email ?? formData.email.trim(),
+            fullName: res.data.fullName || formData.name.trim(),
+            phoneNumber: res.data.phone ?? formData.phone.trim(),
+            roles: ["Patient"],
+            permissions: [],
+          };
+          localStorage.setItem("hospitalms_user", JSON.stringify(portalUser));
         }
         setStep(3);
       } else {
