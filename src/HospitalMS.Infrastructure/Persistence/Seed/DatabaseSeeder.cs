@@ -316,7 +316,7 @@ public class DatabaseSeeder
                 "Appointments.View", "Appointments.Book", "Appointments.Cancel", "Appointments.Reschedule", "Appointments.ManageQueue", "Appointments.CheckIn",
                 "Laboratory.ViewOrders",
                 "Billing.CreateInvoice", "Billing.ViewInvoices", "Billing.ProcessPayment",
-                "IPD.ViewAdmissions", "IPD.ViewBedStatus",
+                "IPD.RequestAdmission", "IPD.ApproveAdmission", "IPD.ViewAdmissions", "IPD.ManageBeds", "IPD.ViewBedStatus",
                 "Emergency.Register",
                 "Insurance.SubmitClaim", "Insurance.ViewClaims"
             },
@@ -343,7 +343,7 @@ public class DatabaseSeeder
                 "Clinical.ViewEncounters", "Clinical.RecordVitals", "Clinical.ViewHistory",
                 "Prescriptions.View",
                 "Laboratory.ViewOrders", "Laboratory.CollectSample", "Laboratory.ViewReports",
-                "IPD.ViewAdmissions", "IPD.ManageBeds", "IPD.ViewBedStatus",
+                "IPD.RequestAdmission", "IPD.ViewAdmissions", "IPD.ManageBeds", "IPD.ViewBedStatus", "IPD.CreateDischarge",
                 "Nursing.RecordVitals", "Nursing.CreateNotes", "Nursing.AdministerMedication", "Nursing.ViewAssignedPatients", "Nursing.ShiftHandover",
                 "Emergency.Register", "Emergency.Triage",
                 "BloodBank.RequestBlood",
@@ -854,6 +854,142 @@ public class DatabaseSeeder
                 };
 
                 _context.Appointments.AddRange(appts);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // 6. Seed Inpatient Department (IPD) Wards & Beds
+        if (!await _context.Wards.AnyAsync())
+        {
+            var maleMedWard = new Ward
+            {
+                BranchId = mainBranch.Id,
+                Name = "Male Medical Ward (MMW)",
+                Code = "MMW-02",
+                WardType = "General",
+                FloorNumber = 2,
+                GenderRestriction = "Male",
+                DailyRate = 800.00m,
+                TotalBeds = 6,
+                IsActive = true
+            };
+
+            var femaleSurgWard = new Ward
+            {
+                BranchId = mainBranch.Id,
+                Name = "Female Surgical Ward (FSW)",
+                Code = "FSW-03",
+                WardType = "General",
+                FloorNumber = 3,
+                GenderRestriction = "Female",
+                DailyRate = 1000.00m,
+                TotalBeds = 6,
+                IsActive = true
+            };
+
+            var cabinWard = new Ward
+            {
+                BranchId = mainBranch.Id,
+                Name = "Executive Private Cabins",
+                Code = "CAB-04",
+                WardType = "Cabin",
+                FloorNumber = 4,
+                GenderRestriction = "Any",
+                DailyRate = 3500.00m,
+                TotalBeds = 4,
+                IsActive = true
+            };
+
+            var icuWard = new Ward
+            {
+                BranchId = mainBranch.Id,
+                Name = "Intensive Care Unit (ICU)",
+                Code = "ICU-05",
+                WardType = "ICU",
+                FloorNumber = 5,
+                GenderRestriction = "Any",
+                DailyRate = 8500.00m,
+                TotalBeds = 4,
+                IsActive = true
+            };
+
+            _context.Wards.AddRange(maleMedWard, femaleSurgWard, cabinWard, icuWard);
+            await _context.SaveChangesAsync();
+
+            // Beds for Male Medical Ward
+            var mmwBeds = Enumerable.Range(1, 6).Select(i => new Bed
+            {
+                WardId = maleMedWard.Id,
+                BedNumber = $"MMW-20{i}",
+                BedType = "SemiFowler",
+                DailyRate = 800.00m,
+                Status = "Available"
+            }).ToList();
+
+            // Beds for Female Surgical Ward
+            var fswBeds = Enumerable.Range(1, 6).Select(i => new Bed
+            {
+                WardId = femaleSurgWard.Id,
+                BedNumber = $"FSW-30{i}",
+                BedType = "FullFowler",
+                DailyRate = 1000.00m,
+                Status = "Available"
+            }).ToList();
+
+            // Cabins
+            var cabinBeds = Enumerable.Range(1, 4).Select(i => new Bed
+            {
+                WardId = cabinWard.Id,
+                BedNumber = $"CAB-40{i}",
+                BedType = "Electric",
+                DailyRate = 3500.00m,
+                Status = "Available"
+            }).ToList();
+
+            // ICU Beds
+            var icuBeds = Enumerable.Range(1, 4).Select(i => new Bed
+            {
+                WardId = icuWard.Id,
+                BedNumber = $"ICU-50{i}",
+                BedType = "ICU_Ventilator",
+                DailyRate = 8500.00m,
+                Status = "Available"
+            }).ToList();
+
+            var allBeds = mmwBeds.Concat(fswBeds).Concat(cabinBeds).Concat(icuBeds).ToList();
+            _context.Beds.AddRange(allBeds);
+            await _context.SaveChangesAsync();
+
+            // Create initial active admission if patient & doctor available
+            var patient = await _context.Patients.FirstOrDefaultAsync();
+            var doctor = await _context.Doctors.FirstOrDefaultAsync();
+
+            if (patient != null && doctor != null && mmwBeds.Count > 0)
+            {
+                var occupiedBed = mmwBeds[0];
+                occupiedBed.Status = "Occupied";
+
+                var admission = new InpatientAdmission
+                {
+                    AdmissionNumber = "IPD-202611-001",
+                    PatientId = patient.Id,
+                    DoctorId = doctor.Id,
+                    WardId = maleMedWard.Id,
+                    BedId = occupiedBed.Id,
+                    AdmissionDate = DateTime.UtcNow.AddDays(-2),
+                    Status = "Admitted",
+                    ProvisionalDiagnosis = "Acute Bronchial Asthma with secondary infection",
+                    AdmissionPriority = "Urgent",
+                    InitialDeposit = 5000.00m,
+                    EstimatedDays = 4,
+                    CareInstructions = "Administer IV hydrocortisone, continuous O2 monitoring, nebulization every 6 hours",
+                    AdmittedByRole = "Receptionist"
+                };
+
+                _context.InpatientAdmissions.Add(admission);
+                await _context.SaveChangesAsync();
+
+                occupiedBed.CurrentAdmissionId = admission.Id;
                 await _context.SaveChangesAsync();
             }
         }

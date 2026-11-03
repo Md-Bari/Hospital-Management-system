@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Calendar as CalendarIcon, Clock, User, Stethoscope, CheckCircle2, ChevronRight, X } from "lucide-react";
+import { Plus, Search, Calendar as CalendarIcon, Clock, User, Stethoscope, CheckCircle2, ChevronRight, ChevronLeft, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   appointmentsApi,
   AppointmentItem,
@@ -19,6 +20,9 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // For modal options
   const [patients, setPatients] = useState<PatientItem[]>([]);
@@ -34,16 +38,18 @@ export default function AppointmentsPage() {
   const [dateFilter, setDateFilter] = useState(localDateString());
   const [loadError, setLoadError] = useState("");
 
-  const loadData = async () => {
+  const loadData = async (pg = page) => {
     try {
       setLoading(true);
       setLoadError("");
       const [apptRes, queueRes] = await Promise.all([
-        appointmentsApi.getAppointments({ pageSize: 50, date: dateFilter || undefined }),
+        appointmentsApi.getAppointments({ page: pg, pageSize: 20, date: dateFilter || undefined }),
         appointmentsApi.getTodayQueue().catch(() => null),
       ]);
 
       if (apptRes?.items) setAppointments(apptRes.items);
+      if (apptRes?.totalPages) setTotalPages(apptRes.totalPages);
+      if (apptRes?.total) setTotal(apptRes.total);
       if (queueRes) setQueueData(queueRes);
     } catch (err) {
       setLoadError(getApiError(err, "Failed to load appointments."));
@@ -53,9 +59,15 @@ export default function AppointmentsPage() {
   };
 
   useEffect(() => {
-    loadData();
+    setPage(1);
+    loadData(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilter]);
+
+  const handlePage = (pg: number) => {
+    setPage(pg);
+    loadData(pg);
+  };
 
   useEffect(() => {
     // Load lookup data for booking modal
@@ -338,6 +350,43 @@ export default function AppointmentsPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-xs text-slate-500">
+            Page {page} of {totalPages} · {total} total appointments
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handlePage(page - 1)}
+              disabled={page <= 1}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((pg) => (
+              <button
+                key={pg}
+                onClick={() => handlePage(pg)}
+                className={cn(
+                  "w-8 h-8 rounded-lg text-xs font-semibold transition-colors",
+                  pg === page ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
+                )}
+              >
+                {pg}
+              </button>
+            ))}
+            <button
+              onClick={() => handlePage(page + 1)}
+              disabled={page >= totalPages}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-30"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Booking Modal */}
       {isModalOpen && (

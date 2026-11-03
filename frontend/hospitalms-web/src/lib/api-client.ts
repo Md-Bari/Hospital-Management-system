@@ -621,4 +621,165 @@ export const usersApi = {
     const res = await apiClient.put(`/users/${userId}/status`, { isActive });
     return res.data.data;
   },
+  createStaffUser: async (data: {
+    fullName: string;
+    email: string;
+    password: string;
+    roleName: string;
+    phoneNumber?: string;
+  }) => {
+    const res = await apiClient.post("/auth/register", data);
+    return res.data.data;
+  },
 };
+
+// 11. Inpatient Department (IPD & Wards) APIs
+export interface IpdOverview {
+  totalBeds: number;
+  occupiedBeds: number;
+  availableBeds: number;
+  cleaningBeds: number;
+  maintenanceBeds: number;
+  totalWards: number;
+  activeAdmissions: number;
+  occupancyRate: number;
+  currency: string;
+  currencySymbol: string;
+}
+
+export interface WardItem {
+  id: string;
+  name: string;
+  code: string;
+  wardType: string;
+  floorNumber: number;
+  genderRestriction: string;
+  dailyRate: number;
+  dailyRateDisplay: string;
+  totalBeds: number;
+  availableBeds: number;
+  occupiedBeds: number;
+  cleaningBeds: number;
+  maintenanceBeds: number;
+}
+
+export interface BedItem {
+  id: string;
+  bedNumber: string;
+  bedType: string;
+  dailyRate: number;
+  dailyRateDisplay: string;
+  status: "Available" | "Occupied" | "Cleaning" | "Maintenance";
+  ward: {
+    id: string;
+    name: string;
+    code: string;
+    wardType: string;
+    floorNumber: number;
+  };
+  currentAdmission?: {
+    admissionNumber: string;
+    patientName: string;
+    patientUid: string;
+    phone: string;
+    doctorName: string;
+    admissionDate: string;
+    provisionalDiagnosis: string;
+    admissionPriority: string;
+  } | null;
+}
+
+export interface InpatientAdmissionItem {
+  id: string;
+  admissionNumber: string;
+  admissionDate: string;
+  dischargeDate?: string | null;
+  status: "Admitted" | "Discharged" | "Transferred" | "Cancelled";
+  provisionalDiagnosis: string;
+  admissionPriority: "Routine" | "Urgent" | "Emergency";
+  initialDeposit: number;
+  initialDepositDisplay: string;
+  estimatedDays: number;
+  careInstructions?: string;
+  dischargeSummary?: string;
+  admittedByRole?: string;
+  patient: {
+    id: string;
+    patientUid: string;
+    fullName: string;
+    phone: string;
+    bloodGroup: string;
+    gender: string;
+  };
+  doctor: {
+    id: string;
+    fullName: string;
+    department: string;
+  };
+  ward: {
+    id: string;
+    name: string;
+    code: string;
+    wardType: string;
+    floorNumber: number;
+  };
+  bed: {
+    id: string;
+    bedNumber: string;
+    bedType: string;
+    dailyRate: number;
+    dailyRateDisplay: string;
+  };
+}
+
+export interface AdmitPatientPayload {
+  patientId: string;
+  doctorId: string;
+  bedId: string;
+  provisionalDiagnosis: string;
+  admissionPriority: string;
+  initialDeposit: number;
+  estimatedDays: number;
+  careInstructions?: string;
+}
+
+export const ipdApi = {
+  getOverview: async (): Promise<IpdOverview> => {
+    const res = await apiClient.get("/ipd/overview");
+    return res.data.data;
+  },
+  getWards: async (): Promise<WardItem[]> => {
+    const res = await apiClient.get("/ipd/wards");
+    return res.data.data;
+  },
+  getBeds: async (params?: { wardId?: string; status?: string; search?: string }): Promise<BedItem[]> => {
+    const res = await apiClient.get("/ipd/beds", { params });
+    return res.data.data;
+  },
+  getAdmissions: async (params?: {
+    status?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ items: InpatientAdmissionItem[]; totalCount: number; page: number; pageSize: number; totalPages: number }> => {
+    const res = await apiClient.get("/ipd/admissions", { params });
+    return res.data.data;
+  },
+  admitPatient: async (payload: AdmitPatientPayload) => {
+    const res = await apiClient.post("/ipd/admissions", payload);
+    return res.data;
+  },
+  dischargePatient: async (id: string, dischargeSummary?: string) => {
+    const res = await apiClient.post(`/ipd/admissions/${id}/discharge`, { dischargeSummary });
+    return res.data;
+  },
+  transferBed: async (id: string, newBedId: string, reason?: string) => {
+    const res = await apiClient.post(`/ipd/admissions/${id}/transfer-bed`, { newBedId, reason });
+    return res.data;
+  },
+  updateBedStatus: async (id: string, status: string) => {
+    const res = await apiClient.patch(`/ipd/beds/${id}/status`, { status });
+    return res.data;
+  },
+};
+

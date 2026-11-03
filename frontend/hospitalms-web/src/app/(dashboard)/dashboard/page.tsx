@@ -2,6 +2,8 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { PatientPortalDashboard } from "@/components/dashboard/PatientPortalDashboard";
+import { DoctorDashboard } from "@/components/dashboard/DoctorDashboard";
+import { HRManagerDashboard } from "@/components/dashboard/HRManagerDashboard";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { DepartmentRadialChart } from "@/components/dashboard/DepartmentRadialChart";
@@ -11,17 +13,19 @@ import { MiniCalendarAgenda } from "@/components/dashboard/MiniCalendarAgenda";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  
-  // If the user has Patient role and is not an Administrator or Staff, render the dedicated Patient Portal
-  const isPatient =
-    user?.roles?.includes("Patient") &&
-    !user?.roles?.includes("SuperAdmin") &&
-    !user?.roles?.includes("HospitalAdmin") &&
-    !user?.roles?.includes("BranchManager");
+  const roles = user?.roles ?? [];
+  const has = (r: string) => roles.includes(r);
 
-  if (isPatient) {
-    return <PatientPortalDashboard />;
-  }
+  const isPatient =
+    has("Patient") && !has("SuperAdmin") && !has("HospitalAdmin") && !has("BranchManager");
+  const isDoctor =
+    has("Doctor") && !has("SuperAdmin") && !has("HospitalAdmin") && !has("BranchManager");
+  const isHRManager =
+    has("HRManager") && !has("SuperAdmin") && !has("HospitalAdmin") && !has("BranchManager");
+
+  if (isPatient) return <PatientPortalDashboard />;
+  if (isDoctor) return <DoctorDashboard />;
+  if (isHRManager) return <HRManagerDashboard />;
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">

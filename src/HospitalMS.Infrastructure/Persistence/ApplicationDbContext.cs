@@ -47,6 +47,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Payment> Payments => Set<Payment>();
 
+    public DbSet<Ward> Wards => Set<Ward>();
+    public DbSet<Bed> Beds => Set<Bed>();
+    public DbSet<InpatientAdmission> InpatientAdmissions => Set<InpatientAdmission>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -383,6 +387,69 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // Inpatient Management (IPD)
+        builder.Entity<Ward>(entity =>
+        {
+            entity.ToTable("ipd_wards");
+            entity.HasKey(w => w.Id);
+            entity.Property(w => w.Name).HasMaxLength(150).IsRequired();
+            entity.Property(w => w.Code).HasMaxLength(50).IsRequired();
+            entity.Property(w => w.WardType).HasMaxLength(50).IsRequired();
+            entity.Property(w => w.GenderRestriction).HasMaxLength(20).IsRequired();
+            entity.Property(w => w.DailyRate).HasPrecision(18, 2);
+
+            entity.HasOne(w => w.Branch)
+                .WithMany()
+                .HasForeignKey(w => w.BranchId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<Bed>(entity =>
+        {
+            entity.ToTable("ipd_beds");
+            entity.HasKey(b => b.Id);
+            entity.Property(b => b.BedNumber).HasMaxLength(50).IsRequired();
+            entity.Property(b => b.BedType).HasMaxLength(50).IsRequired();
+            entity.Property(b => b.Status).HasMaxLength(30).IsRequired();
+            entity.Property(b => b.DailyRate).HasPrecision(18, 2);
+
+            entity.HasOne(b => b.Ward)
+                .WithMany(w => w.Beds)
+                .HasForeignKey(b => b.WardId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<InpatientAdmission>(entity =>
+        {
+            entity.ToTable("ipd_admissions");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.AdmissionNumber).HasMaxLength(50).IsRequired();
+            entity.Property(a => a.Status).HasMaxLength(30).IsRequired();
+            entity.Property(a => a.ProvisionalDiagnosis).HasMaxLength(300).IsRequired();
+            entity.Property(a => a.AdmissionPriority).HasMaxLength(30).IsRequired();
+            entity.Property(a => a.InitialDeposit).HasPrecision(18, 2);
+
+            entity.HasOne(a => a.Patient)
+                .WithMany()
+                .HasForeignKey(a => a.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.Doctor)
+                .WithMany()
+                .HasForeignKey(a => a.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.Ward)
+                .WithMany()
+                .HasForeignKey(a => a.WardId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.Bed)
+                .WithMany(b => b.Admissions)
+                .HasForeignKey(a => a.BedId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // Global Soft Delete Filter
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
@@ -396,6 +463,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.AddInterceptors(_auditableEntityInterceptor, _softDeleteInterceptor);
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         base.OnConfiguring(optionsBuilder);
     }
 }

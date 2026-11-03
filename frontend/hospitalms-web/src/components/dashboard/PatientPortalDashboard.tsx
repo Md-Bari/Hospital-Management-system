@@ -253,7 +253,7 @@ export function PatientPortalDashboard() {
       </div>
 
       {/* 2. Top Summary Stat Row (Patient View) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
             <Calendar className="w-6 h-6" />

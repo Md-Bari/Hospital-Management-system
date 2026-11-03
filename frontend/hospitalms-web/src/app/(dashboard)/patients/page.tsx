@@ -7,6 +7,7 @@ import { Plus, Search, Filter, Phone, Droplet, User, HeartPulse, X, Check, Mail,
 import { patientsApi, PatientItem, getApiError, localDateString } from "@/lib/api-client";
 import { WritePrescriptionModal } from "@/components/dashboard/WritePrescriptionModal";
 import { PrescriptionPrintModal } from "@/components/dashboard/PrescriptionPrintModal";
+import { useAuth } from "@/context/AuthContext";
 
 export default function PatientsPage() {
   return (
@@ -17,6 +18,8 @@ export default function PatientsPage() {
 }
 
 function PatientsPageContent() {
+  const { hasAnyRole } = useAuth();
+  const canWriteRx = hasAnyRole(["SuperAdmin", "HospitalAdmin", "BranchManager", "Doctor"]);
   const urlSearch = useSearchParams().get("search") ?? "";
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,14 +277,16 @@ function PatientsPageContent() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setWriteRxPatient({ id: p.id, fullName: p.fullName })}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
-                        title="Write Prescription"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        Write Rx
-                      </button>
+                      {canWriteRx && (
+                        <button
+                          onClick={() => setWriteRxPatient({ id: p.id, fullName: p.fullName })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+                          title="Write Prescription"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          Write Rx
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

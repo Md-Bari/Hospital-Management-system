@@ -11,27 +11,69 @@ import {
   FlaskConical,
   Pill,
   CreditCard,
-  Sparkles,
   ShieldCheck,
   PhoneCall,
   Link as LinkIcon,
+  UserCog,
+  ClipboardList,
+  BarChart3,
+  UsersRound,
+  BedDouble,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { appointmentsApi } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 
-export const staffNavigationItems = [
+// ─── Navigation item sets by role ─────────────────────────────────────────────
+
+const adminNavItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Patients", href: "/patients", icon: Users },
   { name: "Appointments", href: "/appointments", icon: Calendar },
+  { name: "Inpatient / Wards", href: "/ipd", icon: BedDouble },
   { name: "Doctors", href: "/doctors", icon: Stethoscope },
   { name: "Clinical / EHR", href: "/clinical", icon: FileText },
   { name: "Laboratory", href: "/laboratory", icon: FlaskConical },
   { name: "Pharmacy", href: "/pharmacy", icon: Pill },
   { name: "Billing", href: "/billing", icon: CreditCard },
   { name: "Roles & RBAC", href: "/settings/roles", icon: ShieldCheck },
+  { name: "User Management", href: "/settings/users", icon: UserCog },
+  { name: "Activity Logs", href: "/settings/logs", icon: ClipboardList },
+  { name: "Executive Summary", href: "/settings/summary", icon: BarChart3 },
 ];
+
+// Branch manager = same as admin (restriction is on forms only – cannot create BranchManager users)
+const branchManagerNavItems = adminNavItems;
+
+const doctorNavItems = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Inpatient / Wards", href: "/ipd", icon: BedDouble },
+  { name: "Clinical / EHR", href: "/clinical", icon: FileText },
+];
+
+const nurseNavItems = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Inpatient / Wards", href: "/ipd", icon: BedDouble },
+  { name: "Patients", href: "/patients", icon: Users },
+  { name: "Clinical / EHR", href: "/clinical", icon: FileText },
+];
+
+const receptionistNavItems = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Inpatient / Wards", href: "/ipd", icon: BedDouble },
+  { name: "Patients", href: "/patients", icon: Users },
+  { name: "Appointments", href: "/appointments", icon: Calendar },
+  { name: "Billing", href: "/billing", icon: CreditCard },
+];
+
+const hrManagerNavItems = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Doctors", href: "/doctors", icon: Stethoscope },
+  { name: "Staff & Users", href: "/settings/users", icon: UsersRound },
+];
+
+export const staffNavigationItems = adminNavItems;
 
 export const patientNavigationItems = [
   { name: "My Health Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -44,20 +86,44 @@ export const patientNavigationItems = [
 
 export const navigationItems = staffNavigationItems;
 
+function getNavItems(roles: string[]) {
+  const has = (r: string) => roles.includes(r);
+
+  if (has("Patient") && !has("SuperAdmin") && !has("HospitalAdmin") && !has("BranchManager")) {
+    return patientNavigationItems;
+  }
+  if (has("SuperAdmin") || has("HospitalAdmin")) return adminNavItems;
+  if (has("BranchManager")) return branchManagerNavItems;
+  if (has("Doctor")) return doctorNavItems;
+  if (has("Nurse")) return nurseNavItems;
+  if (has("Receptionist")) return receptionistNavItems;
+  if (has("HRManager")) return hrManagerNavItems;
+  // All other staff roles – show a sensible subset without admin tools
+  return [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Inpatient / Wards", href: "/ipd", icon: BedDouble },
+    { name: "Patients", href: "/patients", icon: Users },
+    { name: "Appointments", href: "/appointments", icon: Calendar },
+    { name: "Clinical / EHR", href: "/clinical", icon: FileText },
+  ];
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
 
+  const roles = user?.roles ?? [];
   const isPatient =
-    user?.roles?.includes("Patient") &&
-    !user?.roles?.includes("SuperAdmin") &&
-    !user?.roles?.includes("HospitalAdmin") &&
-    !user?.roles?.includes("BranchManager");
+    roles.includes("Patient") &&
+    !roles.includes("SuperAdmin") &&
+    !roles.includes("HospitalAdmin") &&
+    !roles.includes("BranchManager");
 
-  const currentNavItems = isPatient ? patientNavigationItems : staffNavigationItems;
+  const currentNavItems = getNavItems(roles);
 
   useEffect(() => {
+    if (isPatient) return;
     appointmentsApi
       .getTodayQueue()
       .then((q) => {
@@ -65,7 +131,7 @@ export function Sidebar() {
         setWaitingCount(queue.filter((a) => a.status === "Confirmed" || a.status === "CheckedIn").length);
       })
       .catch(() => setWaitingCount(null));
-  }, [pathname]);
+  }, [pathname, isPatient]);
 
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between h-screen sticky top-0 px-4 py-6 select-none">
@@ -89,8 +155,11 @@ export function Sidebar() {
         {/* Navigation Menu */}
         <nav className="space-y-1.5">
           {currentNavItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
-            const badge = item.href === "/appointments" && waitingCount && !isPatient ? waitingCount : null;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+            const badge =
+              item.href === "/appointments" && waitingCount && !isPatient ? waitingCount : null;
             const Icon = item.icon;
 
             return (
@@ -122,7 +191,7 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Bottom Information Card (Adaptive for Patient vs Staff) */}
+      {/* Bottom Card */}
       {isPatient ? (
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 p-4 text-white shadow-lg shadow-red-600/15">
           <div className="flex items-center gap-2 mb-1.5">
@@ -139,15 +208,10 @@ export function Sidebar() {
           </a>
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-4 text-white shadow-lg shadow-blue-600/15">
-          <div className="absolute top-2 right-2 opacity-15">
-            <Sparkles className="w-16 h-16 text-white" />
-          </div>
-          <p className="text-xs uppercase font-semibold tracking-wider text-blue-200">Agency Pro</p>
-          <p className="text-sm font-bold mt-0.5">Enterprise Hospital Management</p>
-          <button className="mt-3.5 w-full bg-white text-blue-600 text-xs font-semibold py-2 rounded-xl hover:bg-blue-50 transition-colors shadow-sm">
-            Upgrade
-          </button>
+        <div className="px-3 py-3 rounded-2xl bg-slate-50 border border-slate-100">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Signed in as</p>
+          <p className="text-xs font-bold text-slate-700 mt-0.5 truncate">{user?.fullName ?? "Staff"}</p>
+          <p className="text-[11px] text-slate-400 truncate">{roles.join(", ") || "Staff"}</p>
         </div>
       )}
     </aside>
