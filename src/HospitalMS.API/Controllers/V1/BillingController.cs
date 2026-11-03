@@ -18,6 +18,8 @@ public class BillingController : BaseApiController
     public async Task<ActionResult> GetInvoices(
         [FromQuery] Guid? patientId = null,
         [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? itemType = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 15)
     {
@@ -35,6 +37,22 @@ public class BillingController : BaseApiController
 
         if (!string.IsNullOrWhiteSpace(status) && status != "All")
             query = query.Where(i => i.Status.ToLower() == status.ToLower());
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(i =>
+                i.InvoiceNumber.ToLower().Contains(term) ||
+                i.Patient.PatientUid.ToLower().Contains(term) ||
+                (i.Patient.FirstName + " " + i.Patient.LastName).ToLower().Contains(term) ||
+                i.Patient.Phone.Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(itemType) && itemType != "All")
+        {
+            var typeLower = itemType.Trim().ToLower();
+            query = query.Where(i => i.Items.Any(item => item.ItemType.ToLower() == typeLower));
+        }
 
         var totalCount = await query.CountAsync();
         var items = await query
@@ -64,7 +82,9 @@ public class BillingController : BaseApiController
                     i.Patient.Phone
                 },
                 ItemCount = i.Items.Count,
-                PaymentCount = i.Payments.Count
+                PaymentCount = i.Payments.Count,
+                PrimaryCategory = i.Items.Select(item => item.ItemType).FirstOrDefault() ?? "General",
+                ItemsSummary = string.Join(", ", i.Items.Take(3).Select(item => item.ItemName)) + (i.Items.Count > 3 ? "..." : "")
             })
             .ToListAsync();
 
@@ -119,7 +139,10 @@ public class BillingController : BaseApiController
                     invoice.Patient.PatientUid,
                     FullName = invoice.Patient.FirstName + " " + invoice.Patient.LastName,
                     invoice.Patient.Phone,
-                    invoice.Patient.Address
+                    invoice.Patient.Address,
+                    invoice.Patient.Gender,
+                    invoice.Patient.BloodGroup,
+                    Age = DateTime.UtcNow.Year - invoice.Patient.DateOfBirth.Year
                 },
                 Items = invoice.Items.Select(item => new
                 {
@@ -147,14 +170,128 @@ public class BillingController : BaseApiController
         });
     }
 
+    [HttpGet("services-catalog")]
+    public async Task<ActionResult> GetServicesCatalog()
+    {
+        var doctors = await _context.Doctors
+            .Include(d => d.Department)
+            .Where(d => d.IsActive && !d.IsDeleted)
+            .OrderBy(d => d.FullName)
+            .Select(d => new
+            {
+                d.Id,
+                d.FullName,
+                d.Specialization,
+                Department = d.Department.Name,
+                ConsultationFee = d.ConsultationFee > 0 ? d.ConsultationFee : 1000m,
+                ConsultationFeeDisplay = $"৳{(d.ConsultationFee > 0 ? d.ConsultationFee : 1000m):N0}"
+            })
+            .ToListAsync();
+
+        var labTests = await _context.LabTests
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Category)
+            .ThenBy(t => t.Name)
+            .Select(t => new
+            {
+                t.Id,
+                t.Code,
+                t.Name,
+                t.Category,
+                t.SampleType,
+                t.Price,
+                PriceDisplay = $"৳{t.Price:N0}"
+            })
+            .ToListAsync();
+
+        var medicines = await _context.Medicines
+            .Where(m => m.IsActive && !m.IsDeleted && m.StockQuantity > 0)
+            .OrderBy(m => m.BrandName)
+            .Select(m => new
+            {
+                m.Id,
+                m.BrandName,
+                m.GenericName,
+                m.DosageForm,
+                m.Strength,
+                m.UnitPrice,
+                UnitPriceDisplay = $"৳{m.UnitPrice:N0}",
+                m.StockQuantity
+            })
+            .ToListAsync();
+
+        var standardServices = new[]
+        {
+            // 1. OPD Consultations
+            new { Code = "OPD-GP", Name = "General Physician Consultation", Category = "Consultation", UnitPrice = 500m, Description = "Outdoor general medical officer visit" },
+            new { Code = "OPD-SPEC", Name = "Specialist Consultant OPD Visit", Category = "Consultation", UnitPrice = 1000m, Description = "Outdoor specialist chamber consultation" },
+            new { Code = "OPD-PROF", Name = "Senior Professor / HOD Consultation", Category = "Consultation", UnitPrice = 1500m, Description = "Senior professor specialized consultation" },
+            new { Code = "OPD-FOL", Name = "Follow-up Consultation (Within 7 Days)", Category = "Consultation", UnitPrice = 300m, Description = "Report review and prescription follow-up" },
+            new { Code = "EMO-VISIT", Name = "Emergency Medical Officer (EMO) Visit", Category = "Consultation", UnitPrice = 600m, Description = "Emergency casualty triage and consultation" },
+
+            // 2. IPD & Beds (Daily Rent)
+            new { Code = "BED-GEN", Name = "General Ward Bed (Per Day)", Category = "Bed", UnitPrice = 800m, Description = "Standard male/female inpatient ward" },
+            new { Code = "BED-SEMI", Name = "Semi-Cabin Single Bed (Per Day)", Category = "Bed", UnitPrice = 1800m, Description = "Partitioned semi-private cabin" },
+            new { Code = "BED-AC", Name = "Deluxe AC Single Cabin (Per Day)", Category = "Bed", UnitPrice = 3500m, Description = "Air-conditioned private cabin with attached bath" },
+            new { Code = "BED-VIP", Name = "VIP Executive Suite (Per Day)", Category = "Bed", UnitPrice = 6000m, Description = "Executive suite with patient lounge & attendant room" },
+            new { Code = "BED-ICU", Name = "ICU / CCU Life Support Bed (Per Day)", Category = "Bed", UnitPrice = 12000m, Description = "Intensive care bed with continuous ventilator & monitoring" },
+            new { Code = "IPD-NURSE", Name = "Inpatient Nursing Care Charge (Per Day)", Category = "Bed", UnitPrice = 500m, Description = "24-hour dedicated inpatient nursing care" },
+            new { Code = "IPD-ROUND", Name = "Consultant Daily Inpatient Round (Per Day)", Category = "Bed", UnitPrice = 800m, Description = "Attending consultant daily bedside evaluation" },
+
+            // 3. Procedures & Surgical Packages
+            new { Code = "PROC-ND", Name = "Normal Delivery Package", Category = "Procedure", UnitPrice = 18000m, Description = "Labor room, gynecologist, pediatric checkup & 24h bed" },
+            new { Code = "PROC-CS", Name = "Caesarean Section (C-Section) Package", Category = "Procedure", UnitPrice = 35000m, Description = "OT charge, surgeon, anesthetist, baby care & 3-day cabin" },
+            new { Code = "PROC-MOT", Name = "Minor OT / Stitching / Suturing", Category = "Procedure", UnitPrice = 1500m, Description = "Minor surgical room procedure and local anesthesia" },
+            new { Code = "PROC-MAJ", Name = "Major OT Facility Charges (1st Hour)", Category = "Procedure", UnitPrice = 8000m, Description = "Modular operation theatre, laminar airflow & equipment" },
+            new { Code = "PROC-DRS", Name = "Wound Dressing & Antiseptic Bandaging", Category = "Procedure", UnitPrice = 350m, Description = "Post-surgical or trauma wound cleaning and dressing" },
+            new { Code = "PROC-NEB", Name = "Nebulization Session", Category = "Procedure", UnitPrice = 150m, Description = "Respiratory bronchodilator nebulizer treatment" },
+            new { Code = "PROC-CAN", Name = "IV Cannulation & Infusion Set", Category = "Procedure", UnitPrice = 300m, Description = "Cannula insertion, fluid administration setup" },
+            new { Code = "PROC-ENDO", Name = "Upper GI Endoscopy Procedure", Category = "Procedure", UnitPrice = 4500m, Description = "Diagnostic video endoscopy with report" },
+            new { Code = "PROC-DIAL", Name = "Hemodialysis Session", Category = "Procedure", UnitPrice = 2500m, Description = "Single-use dialyzer renal dialysis session" },
+            new { Code = "PROC-ECG", Name = "12-Lead Electrocardiogram (ECG)", Category = "Procedure", UnitPrice = 400m, Description = "Computerized 12-lead ECG with cardiologist interpretation" },
+            new { Code = "PROC-USG", Name = "Ultrasonography (USG) Whole Abdomen", Category = "Procedure", UnitPrice = 1800m, Description = "High-resolution 4D color Doppler ultrasound" },
+            new { Code = "PROC-XRAY", Name = "Digital X-Ray Chest P/A View", Category = "Procedure", UnitPrice = 600m, Description = "High-frequency digital radiography with film" },
+
+            // 4. General & Emergency Services
+            new { Code = "GEN-CARD", Name = "Hospital Registration & Digital Health Card", Category = "General", UnitPrice = 100m, Description = "Lifetime registration and patient portal ID" },
+            new { Code = "GEN-AMB", Name = "Hospital Ambulance Service (Dhaka Metro)", Category = "General", UnitPrice = 1500m, Description = "Emergency life-support ambulance transit" },
+            new { Code = "GEN-CERT", Name = "Medical Fitness / Health Certificate", Category = "General", UnitPrice = 500m, Description = "Official physician examination certificate" },
+            new { Code = "EM-OBS", Name = "Emergency Casualty Observation Bed (Up to 6 Hrs)", Category = "Emergency", UnitPrice = 1200m, Description = "Emergency observation, vital monitoring & fluids" },
+            new { Code = "GEN-O2", Name = "Medical Oxygen Therapy (Per Hour)", Category = "General", UnitPrice = 200m, Description = "Central pipeline medical oxygen administration" },
+            new { Code = "PROC-CATH", Name = "Foley Catheterization Procedure", Category = "General", UnitPrice = 500m, Description = "Sterile catheter insertion & drainage bag setup" }
+        };
+
+        var paymentMethods = new[]
+        {
+            new { Code = "Cash", Name = "Cash (BDT ৳)" },
+            new { Code = "bKash", Name = "bKash Merchant Pay" },
+            new { Code = "Nagad", Name = "Nagad Online Pay" },
+            new { Code = "Card", Name = "Visa / MasterCard / POS" },
+            new { Code = "BankTransfer", Name = "Direct Bank Transfer" }
+        };
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                doctors,
+                labTests,
+                medicines,
+                standardServices,
+                paymentMethods
+            }
+        });
+    }
+
     [HttpPost("invoices")]
     public async Task<ActionResult> CreateInvoice([FromBody] CreateInvoiceRequest request)
     {
         if (request.Items == null || request.Items.Count == 0)
-            return BadRequest(new { success = false, error = "Invoice must contain at least one item." });
+            return BadRequest(new { success = false, error = "Invoice must contain at least one billable item." });
 
         if (request.Items.Any(i => string.IsNullOrWhiteSpace(i.ItemName)))
-            return BadRequest(new { success = false, error = "Every invoice item needs a name." });
+            return BadRequest(new { success = false, error = "Every invoice line item must have a name." });
 
         if (request.Items.Any(i => i.Quantity <= 0 || i.UnitPrice < 0))
             return BadRequest(new { success = false, error = "Item quantity must be at least 1 and unit price cannot be negative." });
@@ -164,18 +301,30 @@ public class BillingController : BaseApiController
 
         var patient = await _context.Patients.FirstOrDefaultAsync(p => p.Id == request.PatientId && !p.IsDeleted);
         if (patient == null)
-            return BadRequest(new { success = false, error = "Patient not found." });
+            return BadRequest(new { success = false, error = "Patient record not found." });
+
+        Doctor? doctor = null;
+        if (request.DoctorId.HasValue)
+        {
+            doctor = await _context.Doctors
+                .Include(d => d.Department)
+                .FirstOrDefaultAsync(d => d.Id == request.DoctorId.Value && !d.IsDeleted);
+        }
 
         var count = await _context.Invoices.IgnoreQueryFilters().CountAsync();
         var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
 
         var subTotal = request.Items.Sum(i => i.Quantity * i.UnitPrice);
-        var discount = request.DiscountAmount;
-        if (discount > subTotal)
-            return BadRequest(new { success = false, error = "Discount cannot exceed the invoice subtotal." });
+        var discount = Math.Max(0, request.DiscountAmount);
+        if (discount > subTotal) discount = subTotal;
 
-        var tax = request.TaxAmount;
+        var tax = Math.Max(0, request.TaxAmount);
         var total = subTotal - discount + tax;
+
+        var amountPaid = Math.Max(0, request.AmountPaid);
+        if (amountPaid > total) amountPaid = total;
+
+        var status = amountPaid >= total ? "Paid" : (amountPaid > 0 ? "PartiallyPaid" : "Unpaid");
 
         var invoice = new Invoice
         {
@@ -185,30 +334,182 @@ public class BillingController : BaseApiController
             DiscountAmount = discount,
             TaxAmount = tax,
             TotalAmount = total,
-            PaidAmount = 0,
-            Status = "Unpaid",
+            PaidAmount = amountPaid,
+            Status = status,
             Items = request.Items.Select(i => new InvoiceItem
             {
                 ItemName = i.ItemName.Trim(),
-                ItemType = i.ItemType ?? "Service",
+                ItemType = string.IsNullOrWhiteSpace(i.ItemType) ? "Service" : i.ItemType.Trim(),
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice
             }).ToList()
         };
 
         _context.Invoices.Add(invoice);
+
+        // Record immediate payment if amount collected
+        Payment? payment = null;
+        if (amountPaid > 0)
+        {
+            var pCount = await _context.Payments.IgnoreQueryFilters().CountAsync();
+            var paymentNumber = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{(pCount + 1):D4}";
+
+            payment = new Payment
+            {
+                PaymentNumber = paymentNumber,
+                Invoice = invoice,
+                Amount = amountPaid,
+                PaymentMethod = request.PaymentMethod ?? "Cash",
+                TransactionReference = request.TransactionReference?.Trim(),
+                PaidAt = DateTime.UtcNow,
+                Status = "Success"
+            };
+
+            _context.Payments.Add(payment);
+        }
+
+        // Automatic Inventory adjustment for medicines billed
+        var medicineItems = request.Items.Where(i => i.ItemType == "Medicine").ToList();
+        if (medicineItems.Count > 0)
+        {
+            var medNames = medicineItems.Select(m => m.ItemName.ToLower()).ToList();
+            var dbMeds = await _context.Medicines
+                .Where(m => medNames.Contains(m.BrandName.ToLower()) && !m.IsDeleted)
+                .ToListAsync();
+
+            foreach (var medItem in medicineItems)
+            {
+                var match = dbMeds.FirstOrDefault(m => m.BrandName.Equals(medItem.ItemName, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    match.StockQuantity = Math.Max(0, match.StockQuantity - medItem.Quantity);
+                }
+            }
+        }
+
+        // Automatic Lab Order requisition generation if diagnostic tests are billed
+        LabOrder? createdLabOrder = null;
+        var labTestItems = request.Items.Where(i => i.ItemType == "LabTest" || i.ItemType == "Diagnostic").ToList();
+        if (request.AutoGenerateLabOrder && labTestItems.Count > 0)
+        {
+            var testNames = labTestItems.Select(t => t.ItemName.ToLower()).ToList();
+            var dbTests = await _context.LabTests
+                .Where(t => testNames.Contains(t.Name.ToLower()) && t.IsActive)
+                .ToListAsync();
+
+            if (dbTests.Count > 0)
+            {
+                var labCount = await _context.LabOrders.IgnoreQueryFilters().CountAsync();
+                var orderNumber = $"LAB-{DateTime.UtcNow:yyyyMMdd}-{(labCount + 1):D4}";
+
+                createdLabOrder = new LabOrder
+                {
+                    OrderNumber = orderNumber,
+                    PatientId = patient.Id,
+                    DoctorId = doctor?.Id,
+                    Priority = "Routine",
+                    Status = "Pending",
+                    TotalAmount = dbTests.Sum(t => t.Price),
+                    IsPaid = (status == "Paid"),
+                    Items = dbTests.Select(t => new LabOrderItem
+                    {
+                        LabTestId = t.Id,
+                        TestName = t.Name,
+                        UnitPrice = t.Price,
+                        ReferenceRange = t.ReferenceRange
+                    }).ToList()
+                };
+
+                _context.LabOrders.Add(createdLabOrder);
+            }
+        }
+
         await _context.SaveChangesAsync();
+
+        // Construct Money Receipt & Voucher for instant printing
+        var moneyReceipt = new
+        {
+            receiptNumber = payment?.PaymentNumber ?? $"MR-{invoice.InvoiceNumber}",
+            invoiceNumber = invoice.InvoiceNumber,
+            date = DateTime.UtcNow.ToString("dd-MM-yyyy hh:mm tt"),
+            status = invoice.Status,
+            isFullyPaid = invoice.Status == "Paid",
+            patient = new
+            {
+                patient.Id,
+                patient.PatientUid,
+                fullName = $"{patient.FirstName} {patient.LastName}",
+                phone = patient.Phone,
+                gender = patient.Gender,
+                bloodGroup = patient.BloodGroup,
+                age = DateTime.UtcNow.Year - patient.DateOfBirth.Year,
+                address = patient.Address
+            },
+            doctor = doctor != null ? new
+            {
+                doctor.Id,
+                fullName = doctor.FullName,
+                specialization = doctor.Specialization,
+                department = doctor.Department?.Name ?? "General"
+            } : null,
+            items = invoice.Items.Select(i => new
+            {
+                i.Id,
+                i.ItemName,
+                i.ItemType,
+                i.Quantity,
+                i.UnitPrice,
+                unitPriceDisplay = $"৳{i.UnitPrice:N0}",
+                totalPrice = i.TotalPrice,
+                totalPriceDisplay = $"৳{i.TotalPrice:N0}"
+            }),
+            financials = new
+            {
+                subTotal = invoice.SubTotal,
+                subTotalDisplay = $"৳{invoice.SubTotal:N0}",
+                discount = invoice.DiscountAmount,
+                discountDisplay = $"৳{invoice.DiscountAmount:N0}",
+                discountReason = request.DiscountReason ?? "Standard Hospital Tariff",
+                tax = invoice.TaxAmount,
+                taxDisplay = $"৳{invoice.TaxAmount:N0}",
+                totalAmount = invoice.TotalAmount,
+                totalAmountDisplay = $"৳{invoice.TotalAmount:N0}",
+                paidAmount = invoice.PaidAmount,
+                paidAmountDisplay = $"৳{invoice.PaidAmount:N0}",
+                dueAmount = invoice.DueAmount,
+                dueAmountDisplay = $"৳{invoice.DueAmount:N0}",
+                paymentMethod = request.PaymentMethod ?? "Cash",
+                transactionReference = request.TransactionReference
+            },
+            labOrderNumber = createdLabOrder?.OrderNumber,
+            cashierName = "Accounts & Billing Desk",
+            hospital = new
+            {
+                name = "Dhaka Specialized General Hospital",
+                address = "Plot 14, Road 7, Dhanmondi, Dhaka 1205, Bangladesh",
+                hotline = "+880 2 9660000 / +880 1711-000001",
+                license = "DGHS-LIC-2026-9812"
+            }
+        };
 
         return CreatedAtAction(nameof(GetInvoiceById), new { id = invoice.Id }, new
         {
             success = true,
+            message = status == "Paid"
+                ? "Bill created and full payment received successfully!"
+                : (status == "PartiallyPaid" ? "Bill created with partial payment." : "Bill created. Payment pending."),
             data = new
             {
                 invoice.Id,
                 invoice.InvoiceNumber,
                 invoice.TotalAmount,
                 TotalAmountDisplay = $"৳{invoice.TotalAmount:N0}",
-                invoice.Status
+                invoice.PaidAmount,
+                PaidAmountDisplay = $"৳{invoice.PaidAmount:N0}",
+                invoice.DueAmount,
+                DueAmountDisplay = $"৳{invoice.DueAmount:N0}",
+                invoice.Status,
+                moneyReceipt
             }
         });
     }
@@ -217,6 +518,8 @@ public class BillingController : BaseApiController
     public async Task<ActionResult> RecordPayment([FromBody] RecordPaymentRequest request)
     {
         var invoice = await _context.Invoices
+            .Include(i => i.Patient)
+            .Include(i => i.Items)
             .Include(i => i.Payments)
             .FirstOrDefaultAsync(i => i.Id == request.InvoiceId && !i.IsDeleted);
 
@@ -233,9 +536,9 @@ public class BillingController : BaseApiController
             return BadRequest(new { success = false, error = "This invoice is already fully paid." });
 
         if (request.Amount > invoice.DueAmount)
-            return BadRequest(new { success = false, error = $"Payment exceeds the due amount of ৳{invoice.DueAmount:N2}." });
+            return BadRequest(new { success = false, error = $"Payment exceeds the due amount of ৳{invoice.DueAmount:N0}." });
 
-        var count = await _context.Payments.CountAsync();
+        var count = await _context.Payments.IgnoreQueryFilters().CountAsync();
         var paymentNumber = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
 
         var payment = new Payment
@@ -254,10 +557,14 @@ public class BillingController : BaseApiController
 
         invoice.Status = invoice.PaidAmount >= invoice.TotalAmount ? "Paid" : "PartiallyPaid";
 
-        // If invoice is fully paid, synchronize any associated diagnostic lab orders for this patient
+        // If invoice is now fully paid, synchronize any associated diagnostic lab orders for this patient
         if (invoice.Status == "Paid")
         {
-            var testNames = invoice.Items.Where(i => i.ItemType == "LabTest" || i.ItemType == "Diagnostic").Select(i => i.ItemName).ToList();
+            var testNames = invoice.Items
+                .Where(i => i.ItemType == "LabTest" || i.ItemType == "Diagnostic")
+                .Select(i => i.ItemName.ToLower())
+                .ToList();
+
             if (testNames.Count > 0)
             {
                 var unpaidLabOrders = await _context.LabOrders
@@ -267,7 +574,7 @@ public class BillingController : BaseApiController
 
                 foreach (var lo in unpaidLabOrders)
                 {
-                    if (lo.Items.Any(item => testNames.Contains(item.TestName)))
+                    if (lo.Items.Any(item => testNames.Contains(item.TestName.ToLower())))
                     {
                         lo.IsPaid = true;
                     }
@@ -280,7 +587,7 @@ public class BillingController : BaseApiController
         return Ok(new
         {
             success = true,
-            message = "Payment recorded successfully.",
+            message = $"Payment of ৳{payment.Amount:N0} received successfully via {payment.PaymentMethod}.",
             data = new
             {
                 payment.Id,
@@ -289,9 +596,54 @@ public class BillingController : BaseApiController
                 AmountDisplay = $"৳{payment.Amount:N0}",
                 payment.PaymentMethod,
                 invoice.PaidAmount,
+                PaidAmountDisplay = $"৳{invoice.PaidAmount:N0}",
                 invoice.DueAmount,
-                invoiceStatus = invoice.Status
+                DueAmountDisplay = $"৳{invoice.DueAmount:N0}",
+                invoiceStatus = invoice.Status,
+                receipt = new
+                {
+                    receiptNumber = payment.PaymentNumber,
+                    invoiceNumber = invoice.InvoiceNumber,
+                    paidAmount = payment.Amount,
+                    paidAmountDisplay = $"৳{payment.Amount:N0}",
+                    totalPaidSoFar = invoice.PaidAmount,
+                    remainingDue = invoice.DueAmount,
+                    paymentMethod = payment.PaymentMethod,
+                    transactionReference = payment.TransactionReference,
+                    date = payment.PaidAt.ToString("dd-MM-yyyy hh:mm tt"),
+                    patient = new
+                    {
+                        invoice.Patient.Id,
+                        invoice.Patient.PatientUid,
+                        fullName = $"{invoice.Patient.FirstName} {invoice.Patient.LastName}",
+                        phone = invoice.Patient.Phone
+                    }
+                }
             }
+        });
+    }
+
+    [HttpPost("invoices/{id:guid}/cancel")]
+    public async Task<ActionResult> CancelInvoice(Guid id, [FromBody] CancelInvoiceRequest request)
+    {
+        var invoice = await _context.Invoices
+            .Include(i => i.Payments)
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+
+        if (invoice == null)
+            return NotFound(new { success = false, error = "Invoice not found." });
+
+        if (invoice.PaidAmount > 0)
+            return BadRequest(new { success = false, error = "Cannot cancel an invoice with recorded payments. Please process a refund or adjust billing." });
+
+        invoice.Status = "Cancelled";
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Invoice {invoice.InvoiceNumber} cancelled successfully.",
+            data = new { invoice.Id, invoice.Status }
         });
     }
 
@@ -350,8 +702,7 @@ public class BillingController : BaseApiController
                 LabTestId = t.Id,
                 TestName = t.Name,
                 UnitPrice = t.Price,
-                ReferenceRange = t.ReferenceRange,
-                Status = "Pending"
+                ReferenceRange = t.ReferenceRange
             }).ToList()
         };
         _context.LabOrders.Add(labOrder);
@@ -377,12 +728,12 @@ public class BillingController : BaseApiController
         };
         _context.Invoices.Add(invoice);
 
-        // 4. Create Payment if money was collected
+        // 4. Create Payment Record if amount paid > 0
         Payment? payment = null;
         if (amountPaid > 0)
         {
-            var payCount = await _context.Payments.CountAsync();
-            var paymentNumber = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{(payCount + 1):D4}";
+            var pCount = await _context.Payments.IgnoreQueryFilters().CountAsync();
+            var paymentNumber = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{(pCount + 1):D4}";
 
             payment = new Payment
             {
@@ -499,15 +850,22 @@ public class BillingController : BaseApiController
 public class CreateInvoiceRequest
 {
     public Guid PatientId { get; set; }
+    public Guid? DoctorId { get; set; }
     public decimal DiscountAmount { get; set; } = 0;
+    public string? DiscountReason { get; set; }
     public decimal TaxAmount { get; set; } = 0;
+    public decimal AmountPaid { get; set; } = 0;
+    public string? PaymentMethod { get; set; } = "Cash";
+    public string? TransactionReference { get; set; }
+    public string? Notes { get; set; }
+    public bool AutoGenerateLabOrder { get; set; } = true;
     public List<CreateInvoiceItemDto> Items { get; set; } = new();
 }
 
 public class CreateInvoiceItemDto
 {
     public string ItemName { get; set; } = string.Empty;
-    public string? ItemType { get; set; } = "Service";
+    public string? ItemType { get; set; } = "Service"; // Consultation, LabTest, Medicine, Bed, Procedure, Emergency, General
     public int Quantity { get; set; } = 1;
     public decimal UnitPrice { get; set; }
 }
@@ -516,7 +874,7 @@ public class RecordPaymentRequest
 {
     public Guid InvoiceId { get; set; }
     public decimal Amount { get; set; }
-    public string? PaymentMethod { get; set; } = "Cash"; // Cash, bKash, Nagad, Card
+    public string? PaymentMethod { get; set; } = "Cash"; // Cash, bKash, Nagad, Card, BankTransfer
     public string? TransactionReference { get; set; }
 }
 
@@ -532,4 +890,7 @@ public class CreateDiagnosticSlipRequest
     public string? Priority { get; set; } = "Routine"; // Routine, Urgent, STAT
 }
 
-
+public class CancelInvoiceRequest
+{
+    public string? Reason { get; set; }
+}

@@ -536,10 +536,53 @@ export interface InvoiceListItem {
   };
   itemCount: number;
   paymentCount: number;
+  primaryCategory?: string;
+  itemsSummary?: string;
+}
+
+export interface ServicesCatalogItem {
+  doctors: Array<{
+    id: string;
+    fullName: string;
+    specialization: string;
+    department: string;
+    consultationFee: number;
+    consultationFeeDisplay: string;
+  }>;
+  labTests: Array<{
+    id: string;
+    code: string;
+    name: string;
+    category: string;
+    sampleType: string;
+    price: number;
+    priceDisplay: string;
+  }>;
+  medicines: Array<{
+    id: string;
+    brandName: string;
+    genericName: string;
+    dosageForm: string;
+    strength: string;
+    unitPrice: number;
+    unitPriceDisplay: string;
+    stockQuantity: number;
+  }>;
+  standardServices: Array<{
+    code: string;
+    name: string;
+    category: string;
+    unitPrice: number;
+    description: string;
+  }>;
+  paymentMethods: Array<{
+    code: string;
+    name: string;
+  }>;
 }
 
 export const billingApi = {
-  getInvoices: async (params?: { patientId?: string; status?: string; page?: number; pageSize?: number }) => {
+  getInvoices: async (params?: { patientId?: string; status?: string; search?: string; itemType?: string; page?: number; pageSize?: number }) => {
     const res = await apiClient.get("/billing/invoices", { params });
     return res.data.data;
   },
@@ -547,13 +590,37 @@ export const billingApi = {
     const res = await apiClient.get(`/billing/invoices/${id}`);
     return res.data.data;
   },
+  getServicesCatalog: async (): Promise<ServicesCatalogItem> => {
+    const res = await apiClient.get("/billing/services-catalog");
+    return res.data.data;
+  },
   getSummary: async () => {
     const res = await apiClient.get("/billing/summary");
     return res.data.data;
   },
+  createInvoice: async (data: {
+    patientId: string;
+    doctorId?: string;
+    discountAmount?: number;
+    discountReason?: string;
+    taxAmount?: number;
+    amountPaid?: number;
+    paymentMethod?: string;
+    transactionReference?: string;
+    notes?: string;
+    autoGenerateLabOrder?: boolean;
+    items: Array<{ itemName: string; itemType?: string; quantity: number; unitPrice: number }>;
+  }) => {
+    const res = await apiClient.post("/billing/invoices", data);
+    return res.data;
+  },
   recordPayment: async (data: { invoiceId: string; amount: number; paymentMethod?: string; transactionReference?: string }) => {
     const res = await apiClient.post("/billing/payments", data);
     return res.data.data;
+  },
+  cancelInvoice: async (id: string, reason?: string) => {
+    const res = await apiClient.post(`/billing/invoices/${id}/cancel`, { reason });
+    return res.data;
   },
   createDiagnosticSlip: async (data: {
     patientId: string;
