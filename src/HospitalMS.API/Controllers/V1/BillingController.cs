@@ -254,6 +254,27 @@ public class BillingController : BaseApiController
 
         invoice.Status = invoice.PaidAmount >= invoice.TotalAmount ? "Paid" : "PartiallyPaid";
 
+        // If invoice is fully paid, synchronize any associated diagnostic lab orders for this patient
+        if (invoice.Status == "Paid")
+        {
+            var testNames = invoice.Items.Where(i => i.ItemType == "LabTest" || i.ItemType == "Diagnostic").Select(i => i.ItemName).ToList();
+            if (testNames.Count > 0)
+            {
+                var unpaidLabOrders = await _context.LabOrders
+                    .Include(lo => lo.Items)
+                    .Where(lo => lo.PatientId == invoice.PatientId && !lo.IsPaid && !lo.IsDeleted)
+                    .ToListAsync();
+
+                foreach (var lo in unpaidLabOrders)
+                {
+                    if (lo.Items.Any(item => testNames.Contains(item.TestName)))
+                    {
+                        lo.IsPaid = true;
+                    }
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -271,6 +292,177 @@ public class BillingController : BaseApiController
                 invoice.DueAmount,
                 invoiceStatus = invoice.Status
             }
+        });
+    }
+
+    [HttpPost("diagnostic-slip")]
+    public async Task<ActionResult> CreateDiagnosticSlip([FromBody] CreateDiagnosticSlipRequest request)
+    {
+        if (request.TestIds == null || request.TestIds.Count == 0)
+            return BadRequest(new { success = false, error = "At least one diagnostic test must be selected." });
+
+        var patient = await _context.Patients.FirstOrDefaultAsync(p => p.Id == request.PatientId && !p.IsDeleted);
+        if (patient == null)
+            return BadRequest(new { success = false, error = "Patient record not found." });
+
+        Doctor? doctor = null;
+        if (request.DoctorId.HasValue)
+        {
+            doctor = await _context.Doctors.Include(d => d.Department).FirstOrDefaultAsync(d => d.Id == request.DoctorId.Value && !d.IsDeleted);
+        }
+
+        var testIds = request.TestIds.Distinct().ToList();
+        var selectedTests = await _context.LabTests
+            .Where(t => testIds.Contains(t.Id) && t.IsActive)
+            .ToListAsync();
+
+        if (selectedTests.Count != testIds.Count)
+            return BadRequest(new { success = false, error = "One or more selected diagnostic tests are invalid or inactive." });
+
+        var subTotal = selectedTests.Sum(t => t.Price);
+        var discount = Math.Max(0, request.DiscountAmount);
+        if (discount > subTotal) discount = subTotal;
+        var totalAmount = subTotal - discount;
+        var amountPaid = Math.Max(0, request.AmountPaid);
+        if (amountPaid > totalAmount) amountPaid = totalAmount;
+
+        var isFullyPaid = amountPaid >= totalAmount;
+
+        // 1. Generate Order Number & Invoice Number
+        var labCount = await _context.LabOrders.IgnoreQueryFilters().CountAsync();
+        var orderNumber = $"LAB-{DateTime.UtcNow:yyyyMMdd}-{(labCount + 1):D4}";
+
+        var invCount = await _context.Invoices.IgnoreQueryFilters().CountAsync();
+        var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{(invCount + 1):D4}";
+
+        // 2. Create LabOrder
+        var labOrder = new LabOrder
+        {
+            OrderNumber = orderNumber,
+            PatientId = patient.Id,
+            DoctorId = doctor?.Id,
+            Priority = request.Priority ?? "Routine",
+            Status = "Pending",
+            TotalAmount = totalAmount,
+            IsPaid = isFullyPaid,
+            Items = selectedTests.Select(t => new LabOrderItem
+            {
+                LabTestId = t.Id,
+                TestName = t.Name,
+                UnitPrice = t.Price,
+                ReferenceRange = t.ReferenceRange,
+                Status = "Pending"
+            }).ToList()
+        };
+        _context.LabOrders.Add(labOrder);
+
+        // 3. Create Invoice
+        var invoice = new Invoice
+        {
+            InvoiceNumber = invoiceNumber,
+            PatientId = patient.Id,
+            SubTotal = subTotal,
+            DiscountAmount = discount,
+            TaxAmount = 0,
+            TotalAmount = totalAmount,
+            PaidAmount = amountPaid,
+            Status = isFullyPaid ? "Paid" : (amountPaid > 0 ? "PartiallyPaid" : "Unpaid"),
+            Items = selectedTests.Select(t => new InvoiceItem
+            {
+                ItemName = t.Name,
+                ItemType = "LabTest",
+                Quantity = 1,
+                UnitPrice = t.Price
+            }).ToList()
+        };
+        _context.Invoices.Add(invoice);
+
+        // 4. Create Payment if money was collected
+        Payment? payment = null;
+        if (amountPaid > 0)
+        {
+            var payCount = await _context.Payments.CountAsync();
+            var paymentNumber = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{(payCount + 1):D4}";
+
+            payment = new Payment
+            {
+                PaymentNumber = paymentNumber,
+                Invoice = invoice,
+                Amount = amountPaid,
+                PaymentMethod = request.PaymentMethod ?? "Cash",
+                TransactionReference = request.TransactionReference?.Trim(),
+                PaidAt = DateTime.UtcNow,
+                Status = "Success"
+            };
+            _context.Payments.Add(payment);
+        }
+
+        await _context.SaveChangesAsync();
+
+        // 5. Construct Printable Diagnostic Slip Data
+        var slipData = new
+        {
+            slipNumber = orderNumber,
+            orderNumber = orderNumber,
+            invoiceNumber = invoice.InvoiceNumber,
+            paymentNumber = payment?.PaymentNumber,
+            date = DateTime.UtcNow.ToString("dd-MM-yyyy hh:mm tt"),
+            status = isFullyPaid ? "Paid" : (amountPaid > 0 ? "Partially Paid" : "Unpaid"),
+            isPaid = isFullyPaid,
+            priority = labOrder.Priority,
+            patient = new
+            {
+                patient.Id,
+                patient.PatientUid,
+                fullName = $"{patient.FirstName} {patient.LastName}",
+                phone = patient.Phone,
+                gender = patient.Gender,
+                bloodGroup = patient.BloodGroup,
+                age = (DateTime.UtcNow.Year - patient.DateOfBirth.Year)
+            },
+            doctor = doctor != null ? new
+            {
+                doctor.Id,
+                fullName = doctor.FullName,
+                specialization = doctor.Specialization,
+                department = doctor.Department?.Name ?? "General"
+            } : null,
+            tests = selectedTests.Select(t => new
+            {
+                t.Id,
+                t.Code,
+                t.Name,
+                t.Category,
+                t.SampleType,
+                price = t.Price,
+                priceDisplay = $"৳{t.Price:N0}"
+            }),
+            financials = new
+            {
+                subTotal,
+                subTotalDisplay = $"৳{subTotal:N0}",
+                discount,
+                discountDisplay = $"৳{discount:N0}",
+                totalAmount,
+                totalAmountDisplay = $"৳{totalAmount:N0}",
+                paidAmount = amountPaid,
+                paidAmountDisplay = $"৳{amountPaid:N0}",
+                dueAmount = totalAmount - amountPaid,
+                dueAmountDisplay = $"৳{(totalAmount - amountPaid):N0}",
+                paymentMethod = request.PaymentMethod ?? "Cash",
+                currency = "BDT",
+                currencySymbol = "৳"
+            },
+            instructions = "Please present this diagnostic slip and barcode at the Pathology Sample Collection Counter."
+        };
+
+        return Ok(new
+        {
+            success = true,
+            message = isFullyPaid
+                ? "Payment received and Diagnostic Slip generated successfully!"
+                : "Diagnostic Invoice generated. Note: Payment is pending.",
+            data = slipData
         });
     }
 
@@ -327,4 +519,17 @@ public class RecordPaymentRequest
     public string? PaymentMethod { get; set; } = "Cash"; // Cash, bKash, Nagad, Card
     public string? TransactionReference { get; set; }
 }
+
+public class CreateDiagnosticSlipRequest
+{
+    public Guid PatientId { get; set; }
+    public Guid? DoctorId { get; set; }
+    public List<Guid> TestIds { get; set; } = new();
+    public decimal DiscountAmount { get; set; } = 0;
+    public decimal AmountPaid { get; set; }
+    public string? PaymentMethod { get; set; } = "Cash"; // Cash, bKash, Nagad, Card
+    public string? TransactionReference { get; set; }
+    public string? Priority { get; set; } = "Routine"; // Routine, Urgent, STAT
+}
+
 

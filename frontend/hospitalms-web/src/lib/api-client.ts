@@ -472,6 +472,18 @@ export const laboratoryApi = {
     const res = await apiClient.put(`/laboratory/orders/${id}/results`, { results });
     return res.data.data;
   },
+  getOrderBySlip: async (slipNumber: string) => {
+    const res = await apiClient.get(`/laboratory/slip/${encodeURIComponent(slipNumber)}`);
+    return res.data.data;
+  },
+  collectSample: async (id: string) => {
+    const res = await apiClient.post(`/laboratory/orders/${id}/collect-sample`);
+    return res.data;
+  },
+  verifyReport: async (id: string) => {
+    const res = await apiClient.post(`/laboratory/orders/${id}/verify-report`);
+    return res.data;
+  },
 };
 
 // 7. Pharmacy APIs
@@ -542,6 +554,18 @@ export const billingApi = {
   recordPayment: async (data: { invoiceId: string; amount: number; paymentMethod?: string; transactionReference?: string }) => {
     const res = await apiClient.post("/billing/payments", data);
     return res.data.data;
+  },
+  createDiagnosticSlip: async (data: {
+    patientId: string;
+    doctorId?: string;
+    testIds: string[];
+    discountAmount?: number;
+    amountPaid: number;
+    paymentMethod?: string;
+    priority?: string;
+  }) => {
+    const res = await apiClient.post("/billing/diagnostic-slip", data);
+    return res.data;
   },
 };
 

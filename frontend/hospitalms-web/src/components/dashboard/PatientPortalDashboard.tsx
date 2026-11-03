@@ -496,35 +496,39 @@ export function PatientPortalDashboard() {
             </div>
 
             <div className="space-y-3">
-              {data?.labOrders?.map((lo) => (
-                <div
-                  key={lo.id}
-                  className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-slate-800">{lo.orderNumber}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                        {lo.status}
-                      </span>
-                    </div>
-                    {lo.items?.map((item) => (
-                      <div key={item.id} className="text-xs">
-                        <span className="font-semibold text-slate-900">{item.testName}: </span>
-                        <span className="text-slate-600">{item.resultValue || "Analysis complete"}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Link
-                    href="/laboratory"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60 shadow-xs transition-colors"
+              {data?.labOrders && data.labOrders.length > 0 ? (
+                data.labOrders.map((lo) => (
+                  <div
+                    key={lo.id}
+                    className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download Report PDF</span>
-                  </Link>
-                </div>
-              ))}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-slate-800">{lo.orderNumber}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                          {lo.status}
+                        </span>
+                      </div>
+                      {lo.items?.map((item) => (
+                        <div key={item.id} className="text-xs">
+                          <span className="font-semibold text-slate-900">{item.testName}: </span>
+                          <span className="text-slate-600">{item.resultValue || "Analysis complete"}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Link
+                      href="/laboratory"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60 shadow-xs transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Report PDF</span>
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 py-6 text-center">No diagnostic reports found.</p>
+              )}
             </div>
           </div>
         </div>

@@ -253,6 +253,163 @@ public class LaboratoryController : BaseApiController
 
         return Ok(new { success = true, message = "Test results updated successfully.", data = new { order.Id, order.Status } });
     }
+
+    [HttpGet("slip/{slipNumber}")]
+    public async Task<ActionResult> GetOrderBySlip(string slipNumber)
+    {
+        if (string.IsNullOrWhiteSpace(slipNumber))
+            return BadRequest(new { success = false, error = "Slip or order number is required." });
+
+        var term = slipNumber.Trim().ToLower();
+
+        var order = await _context.LabOrders
+            .Include(o => o.Patient)
+            .Include(o => o.Doctor)
+                .ThenInclude(d => d.Department)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.LabTest)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o =>
+                !o.IsDeleted &&
+                (o.OrderNumber.ToLower() == term ||
+                 o.Patient.PatientUid.ToLower() == term ||
+                 o.Patient.Phone == term));
+
+        if (order == null)
+        {
+            return NotFound(new
+            {
+                success = false,
+                error = $"No lab order found matching slip/token #{slipNumber}. Please check the number or verify at the Finance counter."
+            });
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                order.Id,
+                order.OrderNumber,
+                order.CreatedAt,
+                order.Priority,
+                order.Status,
+                order.TotalAmount,
+                TotalAmountDisplay = $"৳{order.TotalAmount:N0}",
+                order.IsPaid,
+                paymentStatus = order.IsPaid ? "Paid" : "Unpaid",
+                Patient = new
+                {
+                    order.Patient.Id,
+                    order.Patient.PatientUid,
+                    FullName = $"{order.Patient.FirstName} {order.Patient.LastName}",
+                    order.Patient.Phone,
+                    order.Patient.Gender,
+                    order.Patient.BloodGroup,
+                    Age = ClinicDates.Age(order.Patient.DateOfBirth)
+                },
+                Doctor = order.Doctor != null ? new
+                {
+                    order.Doctor.Id,
+                    order.Doctor.FullName,
+                    order.Doctor.Specialization,
+                    Department = order.Doctor.Department?.Name ?? "General"
+                } : null,
+                Items = order.Items.Select(i => new
+                {
+                    i.Id,
+                    i.LabTestId,
+                    i.TestName,
+                    Code = i.LabTest.Code,
+                    Category = i.LabTest.Category,
+                    SampleType = i.LabTest.SampleType,
+                    i.UnitPrice,
+                    UnitPriceDisplay = $"৳{i.UnitPrice:N0}",
+                    i.ResultValue,
+                    i.ReferenceRange,
+                    i.IsAbnormal,
+                    i.Status,
+                    i.ResultEnteredAt
+                })
+            }
+        });
+    }
+
+    [HttpPost("orders/{id:guid}/collect-sample")]
+    public async Task<ActionResult> CollectSample(Guid id)
+    {
+        var order = await _context.LabOrders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+
+        if (order == null)
+            return NotFound(new { success = false, error = "Lab order not found." });
+
+        if (!order.IsPaid)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "Payment Verification Blocked: Patient has not cleared payment for this diagnostic order. Sample collection is strictly prohibited until bill payment is confirmed at the Finance counter."
+            });
+        }
+
+        if (order.Status == "Completed")
+            return BadRequest(new { success = false, error = "Sample collection already completed and verified." });
+
+        order.Status = "SampleCollected";
+        foreach (var item in order.Items)
+        {
+            if (item.Status == "Pending")
+            {
+                item.Status = "SampleCollected";
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Sample successfully collected for Order #{order.OrderNumber}. Ready for laboratory testing.",
+            data = new { order.Id, order.Status }
+        });
+    }
+
+    [HttpPost("orders/{id:guid}/verify-report")]
+    public async Task<ActionResult> VerifyReport(Guid id)
+    {
+        var order = await _context.LabOrders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+
+        if (order == null)
+            return NotFound(new { success = false, error = "Lab order not found." });
+
+        if (order.Items.Any(i => string.IsNullOrWhiteSpace(i.ResultValue)))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "Cannot verify report: One or more test items still have blank results. Please enter all results before pathologist sign-off."
+            });
+        }
+
+        order.Status = "Completed";
+        foreach (var item in order.Items)
+        {
+            item.Status = "Completed";
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Diagnostic report #{order.OrderNumber} officially verified and published! It is now instantly accessible in the Patient Portal and Doctor EHR.",
+            data = new { order.Id, order.Status }
+        });
+    }
 }
 
 public class CreateLabOrderRequest
