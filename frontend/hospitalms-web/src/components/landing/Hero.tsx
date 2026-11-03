@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, CalendarCheck, Clock3, HeartPulse, ShieldCheck, Star } from "lucide-react";
@@ -115,7 +116,9 @@ export function Hero() {
       </div>
 
       <div className="relative mx-auto max-w-5xl px-4 pb-6 sm:px-6">
-        <DoctorFinder />
+        <Suspense fallback={<div className="h-[76px] rounded-3xl border border-slate-100 bg-white shadow-float" />}>
+          <DoctorFinder />
+        </Suspense>
       </div>
     </section>
   );

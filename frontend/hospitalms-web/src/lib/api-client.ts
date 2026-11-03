@@ -353,6 +353,29 @@ export interface PrescriptionListItem {
   medicinesSummary: string;
 }
 
+export interface PrescriptionDetail {
+  id: string;
+  prescriptionNumber: string;
+  createdAt: string;
+  doctorNotes?: string;
+  lifestyleAdvice?: string;
+  followUpDate?: string;
+  status: string;
+  patient: { id: string; patientUid: string; fullName: string; age: number; gender: string; bloodGroup: string };
+  doctor: { id: string; fullName: string; specialization: string; department: string; licenseNumber: string };
+  medicines: Array<{
+    id: string;
+    medicineName: string;
+    genericName?: string;
+    dosage: string;
+    frequency: string;
+    durationDays: number;
+    totalQuantity: number;
+    mealInstruction: string;
+    specialInstructions?: string;
+  }>;
+}
+
 export const clinicalApi = {
   getEncounters: async (params?: { patientId?: string; doctorId?: string; page?: number; pageSize?: number }) => {
     const res = await apiClient.get("/clinical/encounters", { params });
@@ -360,6 +383,31 @@ export const clinicalApi = {
   },
   getPrescriptions: async (params?: { patientId?: string; page?: number; pageSize?: number }) => {
     const res = await apiClient.get("/clinical/prescriptions", { params });
+    return res.data.data;
+  },
+  getPrescriptionById: async (id: string): Promise<PrescriptionDetail> => {
+    const res = await apiClient.get(`/clinical/prescriptions/${id}`);
+    return res.data.data;
+  },
+  createPrescription: async (data: {
+    patientId: string;
+    doctorId: string;
+    encounterId?: string;
+    doctorNotes?: string;
+    lifestyleAdvice?: string;
+    followUpDate?: string;
+    medicines: Array<{
+      medicineName: string;
+      genericName?: string;
+      dosage?: string;
+      frequency?: string;
+      durationDays?: number;
+      totalQuantity?: number;
+      mealInstruction?: string;
+      specialInstructions?: string;
+    }>;
+  }) => {
+    const res = await apiClient.post("/clinical/prescriptions", data);
     return res.data.data;
   },
 };

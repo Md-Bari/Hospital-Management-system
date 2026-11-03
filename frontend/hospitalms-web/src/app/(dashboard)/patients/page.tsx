@@ -3,8 +3,10 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search, Filter, Phone, Droplet, User, HeartPulse, X, Check, Mail } from "lucide-react";
+import { Plus, Search, Filter, Phone, Droplet, User, HeartPulse, X, Check, Mail, FileText } from "lucide-react";
 import { patientsApi, PatientItem, getApiError, localDateString } from "@/lib/api-client";
+import { WritePrescriptionModal } from "@/components/dashboard/WritePrescriptionModal";
+import { PrescriptionPrintModal } from "@/components/dashboard/PrescriptionPrintModal";
 
 export default function PatientsPage() {
   return (
@@ -42,6 +44,8 @@ function PatientsPageContent() {
   });
 
   const [loadError, setLoadError] = useState("");
+  const [writeRxPatient, setWriteRxPatient] = useState<{ id: string; fullName: string } | null>(null);
+  const [printRxId, setPrintRxId] = useState<string | null>(null);
 
   const loadPatients = async (searchTerm: string = search) => {
     try {
@@ -218,6 +222,7 @@ function PatientsPageContent() {
                   <th className="px-6 py-4 font-semibold">Blood Group</th>
                   <th className="px-6 py-4 font-semibold">Allergies & History</th>
                   <th className="px-6 py-4 font-semibold text-right">Status</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -268,6 +273,16 @@ function PatientsPageContent() {
                         </span>
                       )}
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => setWriteRxPatient({ id: p.id, fullName: p.fullName })}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+                        title="Write Prescription"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Write Rx
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -275,6 +290,25 @@ function PatientsPageContent() {
           </div>
         )}
       </div>
+
+      {/* Write Prescription Modal */}
+      {writeRxPatient && (
+        <WritePrescriptionModal
+          patientId={writeRxPatient.id}
+          patientName={writeRxPatient.fullName}
+          onClose={() => setWriteRxPatient(null)}
+          onSuccess={(id) => {
+            setWriteRxPatient(null);
+            setPrintRxId(id);
+          }}
+        />
+      )}
+
+      {/* Prescription Print Modal */}
+      <PrescriptionPrintModal
+        prescriptionId={printRxId}
+        onClose={() => setPrintRxId(null)}
+      />
 
       {/* Register Patient Modal */}
       {isModalOpen && (

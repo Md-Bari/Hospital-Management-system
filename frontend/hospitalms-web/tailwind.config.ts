@@ -55,6 +55,7 @@ const config: Config = {
         "3xl": "1.5rem",
       },
       boxShadow: {
+        xs: "0 1px 3px rgba(0, 0, 0, 0.06)",
         subtle: "0 2px 12px rgba(0, 0, 0, 0.03)",
         card: "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
         float: "0 24px 60px -20px rgba(14, 47, 99, 0.25)",

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileText, Pill } from "lucide-react";
+import { FileText, Pill, Printer } from "lucide-react";
 import { clinicalApi, getApiError, EncounterListItem, PrescriptionListItem } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { PrescriptionPrintModal } from "@/components/dashboard/PrescriptionPrintModal";
 
 type Tab = "encounters" | "prescriptions";
 
@@ -16,6 +17,7 @@ export default function ClinicalPage() {
   const [prescriptions, setPrescriptions] = useState<PrescriptionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [printRxId, setPrintRxId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -131,6 +133,7 @@ export default function ClinicalPage() {
                   <th className="px-6 py-4 font-semibold">Medicines</th>
                   <th className="px-6 py-4 font-semibold">Follow-up</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold text-right">Print</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -166,6 +169,16 @@ export default function ClinicalPage() {
                         {p.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => setPrintRxId(p.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 text-xs font-semibold rounded-xl transition-all border border-slate-200 hover:border-blue-200"
+                        title="View & Print Prescription"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Print
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -173,6 +186,11 @@ export default function ClinicalPage() {
           </div>
         )}
       </div>
+
+      <PrescriptionPrintModal
+        prescriptionId={printRxId}
+        onClose={() => setPrintRxId(null)}
+      />
     </div>
   );
 }

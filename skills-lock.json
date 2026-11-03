@@ -1,0 +1,821 @@
+{
+  "version": 1,
+  "skills": {
+    "ab-test-setup": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ab-test-setup/SKILL.md",
+      "computedHash": "5b2aa583ac206166f559b81a973c2d47564021a631bd349f8839b1b239ca2568"
+    },
+    "ad-creative": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ad-creative/SKILL.md",
+      "computedHash": "e98e4401c818b91306279bde23a6880c0a123006ebe9dd7cf044f2bbe4c7718b"
+    },
+    "agent-protocol": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/agent-protocol/SKILL.md",
+      "computedHash": "4e35b3c18354ea988d6073846db860475428aa4bf7322a68a18889ecfbab177c"
+    },
+    "agile-product-owner": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/agile-product-owner/SKILL.md",
+      "computedHash": "9dbdcd7155c1b04f143723fb75fb93b78261d069d5ab243dc6c2917083b078cc"
+    },
+    "ai-seo": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ai-seo/SKILL.md",
+      "computedHash": "47dad1db2375c9ec77d06da7eace8880be7c90ea3557ed6f06d6de62599b145c"
+    },
+    "analytics-tracking": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/analytics-tracking/SKILL.md",
+      "computedHash": "1cffb77c4f3a8b26e8a083821b8fb218c65d5702f15e5a3b408390b2e1d1c0f8"
+    },
+    "app-store-optimization": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/app-store-optimization/SKILL.md",
+      "computedHash": "6a341f1880972189494f7c6868af26ceb6c68e4821fbc462852f08fe471a903b"
+    },
+    "atlassian-admin": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/atlassian-admin/SKILL.md",
+      "computedHash": "b04ed45b8568096f8707e127d8e796286e7265779a001ef324d0e8e7bd340119"
+    },
+    "atlassian-templates": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/atlassian-templates/SKILL.md",
+      "computedHash": "479250c660fe83caf1a8f7e69908a859ed81e3c58e4199555320f12456c9fb48"
+    },
+    "aws-solution-architect": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/aws-solution-architect/SKILL.md",
+      "computedHash": "7eec6a79f22a19f441703e794f91bbfa522b5d1d7fce8e02367399abba508c01"
+    },
+    "board-deck-builder": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/board-deck-builder/SKILL.md",
+      "computedHash": "2fe90809d487242c11f4bc23d0cf9675b1b658b35d5693479879acff79d493f4"
+    },
+    "brand-guidelines": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/brand-guidelines/SKILL.md",
+      "computedHash": "dd7327dee858c8c2cfb400f824c370fab639e8c4b5c634abc21a1a09bdade6d4"
+    },
+    "campaign-analytics": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/campaign-analytics/SKILL.md",
+      "computedHash": "7fbdcdfe406178f49d1a036b182d6fe5f29ae5432e66807ae39f1e32fd158aee"
+    },
+    "capa-officer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/capa-officer/SKILL.md",
+      "computedHash": "7c372ab109857f978d3ac109cefde2b3cbf594ce206218f77ae1625125eea85c"
+    },
+    "caveman": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "34929525d38de65c9cbfe89b43b6975be39639abbc5eb093074e6964a8be8dec"
+    },
+    "ceo-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ceo-advisor/SKILL.md",
+      "computedHash": "c3239b469b18b4c8269c7b4f9704ad537507acbecb77cd5e2a50cdd65a2bdedb"
+    },
+    "cfo-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cfo-advisor/SKILL.md",
+      "computedHash": "6b52d728481038af92bb8034dd9b7df4ca78d12aac6e46af5283b3d313dc719e"
+    },
+    "change-management": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/change-management/SKILL.md",
+      "computedHash": "f6f6e1a0124e2c5778fbb5db63cabd24eb55f18a3c1fdc9590a22e32277cdf0b"
+    },
+    "chief-of-staff": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/chief-of-staff/SKILL.md",
+      "computedHash": "e2d8324e0aed038b5ff961d8fbbae1beb420397916e402f52c44d3fa9f8acdb2"
+    },
+    "chro-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/chro-advisor/SKILL.md",
+      "computedHash": "26ed57821d9ae362bc743e0319253513ea56f61efa040ee3ebc80fc7463d7c15"
+    },
+    "churn-prevention": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/churn-prevention/SKILL.md",
+      "computedHash": "57a7fad1805683a8d742daf69b17d4d7cb0420f2c6fccfa66ad86c04a75334d7"
+    },
+    "ciso-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ciso-advisor/SKILL.md",
+      "computedHash": "bff946d925fe338db8460b6a69a20716a3b0f577e44101e665cd55b53499008a"
+    },
+    "claude-code-config": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/claude-code-config/SKILL.md",
+      "computedHash": "10cd6d16e47ed08200ae31a461f700ea2196926b90d373c01caebc3a912f7a97"
+    },
+    "cmo-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cmo-advisor/SKILL.md",
+      "computedHash": "8aeef04c8d421230c275a2a7a1bbea43ee89bfadd5deace55a393c74d4ebdd95"
+    },
+    "code-review-coach": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/code-review-coach/SKILL.md",
+      "computedHash": "b2dd9f47387b20f9b7ae988f166289d44cfe61f3dacc5ae49d38f6338e105de0"
+    },
+    "code-reviewer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/code-reviewer/SKILL.md",
+      "computedHash": "b939df806ce6d7b99c96ffa535ebce8db7d19f6d15c2374c152cf4344dde79d7"
+    },
+    "cold-email": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cold-email/SKILL.md",
+      "computedHash": "2d81b9537f9839fe6ad5d28846377f116fd229cb1332ec92e0016d6e0c060760"
+    },
+    "company-os": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/company-os/SKILL.md",
+      "computedHash": "b67c30930f24f2e7be9030ca6c77c4490b0c5bc21b912f89d8b30987602dbb0e"
+    },
+    "competitive-intel": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/competitive-intel/SKILL.md",
+      "computedHash": "10d34a341219cf091763864711b55f62c8fc5a58c6792b9db7c02af6d46c1cc8"
+    },
+    "competitor-alternatives": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/competitor-alternatives/SKILL.md",
+      "computedHash": "35ffe8a179ba8ca45330c45a39b4dae9578152fbaa6572450f146c36aab33a36"
+    },
+    "confluence-expert": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/confluence-expert/SKILL.md",
+      "computedHash": "40e12b2d13282b8f260e8951b8f957207270478fe877c8f04ecf441707a67811"
+    },
+    "content-humanizer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/content-humanizer/SKILL.md",
+      "computedHash": "63812c361d1eccb0215567051126276eba5abc7fbda2956073e72ee6fcebb133"
+    },
+    "content-strategy": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/content-strategy/SKILL.md",
+      "computedHash": "e4302f80020873a099fcd88d0b991173e9ecdfe00657c5e8bd321a5b9e4bab98"
+    },
+    "context-engine": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/context-engine/SKILL.md",
+      "computedHash": "baa170fb282fafd5fb66b1c904a3c23852c2c74265b6438273f8348b114bcf9e"
+    },
+    "coo-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/coo-advisor/SKILL.md",
+      "computedHash": "8bba0b0b228aa1d677885e15addcb7c516a34e9d2f145bed4d5a447ed8eb316c"
+    },
+    "copy-editing": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/copy-editing/SKILL.md",
+      "computedHash": "87b2cfc1a1a81fc47c9943529c3d74c46d793c0a3df6ca0b3062f2b4710f792a"
+    },
+    "copywriting": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/copywriting/SKILL.md",
+      "computedHash": "23d5d2b1bd50a5a714af928ca4ac28f4516b3efa20b3b0e15845ae3ca0be854e"
+    },
+    "cpo-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cpo-advisor/SKILL.md",
+      "computedHash": "eec976175d4a39128d3acd2fa42f55681e5223915a4f03547cb0e3a9a33f72bc"
+    },
+    "cro-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cro-advisor/SKILL.md",
+      "computedHash": "28608d7122107f23bb80b4dc373eb1f75d7296b2c90502421f74b9919e0b97b8"
+    },
+    "cs-onboard": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cs-onboard/SKILL.md",
+      "computedHash": "b3c9e1020c09da678b70de732c40189d28425f00ea4edfd0f115353bc348eb2e"
+    },
+    "cto-advisor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cto-advisor/SKILL.md",
+      "computedHash": "8c7ba26d624235182801fa887fc8079eda76a6b1d29d14da9268a3ffcfb35a8d"
+    },
+    "culture-architect": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/culture-architect/SKILL.md",
+      "computedHash": "294ae76ee32e1cacb93f2b79663f256bcc6bbec46ac238e717ae5fed36c9af4c"
+    },
+    "cursor-rules-engineer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/cursor-rules-engineer/SKILL.md",
+      "computedHash": "653b9da68954e959bb48d91ed9b72d57c46c231f36ce2822361cc10ef69cefb0"
+    },
+    "customer-success-manager": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/customer-success-manager/SKILL.md",
+      "computedHash": "e1f508d75e5a71e38b1df82c4dcac6c520e02bcfad212c3a5f3afa4cd6e55981"
+    },
+    "database-designer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/database-designer/SKILL.md",
+      "computedHash": "eb4b805bf6fc94b144cf661a0bcf15a96efab9524c265496beb0432981cc8335"
+    },
+    "decision-logger": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/decision-logger/SKILL.md",
+      "computedHash": "13e5607ecb1d3d9b8b9c5d6b559503d14d398cb5fa90e27234aa2040aea16c20"
+    },
+    "email-sequence": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/email-sequence/SKILL.md",
+      "computedHash": "28bfd67924489c135c4e3efd868ed57e69ce0a95fef93b27d4b81d5a750f7e25"
+    },
+    "executive-mentor": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/executive-mentor/SKILL.md",
+      "computedHash": "851c9ef0ff6bd74c44af009adee49b32b06999348b9319b035ee367b87034a9a"
+    },
+    "fda-consultant-specialist": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/fda-consultant-specialist/SKILL.md",
+      "computedHash": "0a6047d811d85b8cec0988b2fd0126abcfeed44d4657874ec9c14130c17b142a"
+    },
+    "feature-matrix": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/feature-matrix/SKILL.md",
+      "computedHash": "1fa63253f127eee4f2876e58ce1ce166b27ecc50394df42a7726a08e9c57152c"
+    },
+    "financial-analyst": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/financial-analyst/SKILL.md",
+      "computedHash": "9b2eee68424bd1f6028902a590d8ea248f6061dae95f983c8979565b412c1ba6"
+    },
+    "form-cro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/form-cro/SKILL.md",
+      "computedHash": "f0c8bb4dcdeae1572a5e01d616a5ba4c748ec9d2b8841174ae552b107acb5ee5"
+    },
+    "founder-coach": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/founder-coach/SKILL.md",
+      "computedHash": "d6a3032c5b3b538d672731b9c85266f4781ef005ae27cc7bdb3720edfb36202c"
+    },
+    "free-tool-strategy": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/free-tool-strategy/SKILL.md",
+      "computedHash": "e8ccc0c24bbc844f23be79276e7bc83c87f6e5fb52450e274499fcb7a593c4bd"
+    },
+    "gdpr-dsgvo-expert": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/gdpr-dsgvo-expert/SKILL.md",
+      "computedHash": "972c554fb78a03f455b2e0cd4a9891408357aa4488b81e0e38c94ce3998535d9"
+    },
+    "git-commit-hygiene": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/git-commit-hygiene/SKILL.md",
+      "computedHash": "2dc46e2270192de3303c7f1707846aca35d69b7ab31bb820ab35817d805c6c90"
+    },
+    "github-project-manager": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/github-project-manager/SKILL.md",
+      "computedHash": "5259df7c5511b57ee527f401e1066fa6ffdfa40a8b0d32f71ba2daa494b4dfc9"
+    },
+    "graphql-architect": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/graphql-architect/SKILL.md",
+      "computedHash": "d17cb5b45c362e63bfa8660217b1a4423b83ed69ad4fa0916509a3e9f74210d0"
+    },
+    "incident-commander": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/incident-commander/SKILL.md",
+      "computedHash": "22f843d8d0e5e635ee8abdb6c605936ddef139da2993f221e27d2a3e37d3b668"
+    },
+    "information-security-manager-iso27001": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/information-security-manager-iso27001/SKILL.md",
+      "computedHash": "a73735d3924d3a3393aa43848f90f5c5892ffab61a14b3fa97cce3b5ad4d635e"
+    },
+    "internal-narrative": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/internal-narrative/SKILL.md",
+      "computedHash": "2a20dd4f25d3251c7e1125b7cae188118ac5f7eb3f4451c74766eff3517ac68e"
+    },
+    "interview-system-designer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/interview-system-designer/SKILL.md",
+      "computedHash": "7ba78d70e4b23e85a0a826fcd30a5627a78401dc54d9fabe7dfe181f90cc36c5"
+    },
+    "intl-expansion": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/intl-expansion/SKILL.md",
+      "computedHash": "17dc047847c29cb46e7dc4044b73f47532a1be3e2dcdabb88c59571faeb26d27"
+    },
+    "isms-audit-expert": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/isms-audit-expert/SKILL.md",
+      "computedHash": "156387ebf114ab1eb542f3a8b3fa5f36e7e16f762de502f3ea0b8833037ea2dc"
+    },
+    "jira-expert": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/jira-expert/SKILL.md",
+      "computedHash": "d0519f9cb9c5cb1f2aa28f3521eafda94333f4284400fa3bc889a3ed703a9858"
+    },
+    "launch-strategy": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/launch-strategy/SKILL.md",
+      "computedHash": "1e4682ecbfdc3426879e10265c56d02f9213cdd40817f22e8bda64bf647509b4"
+    },
+    "ma-playbook": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ma-playbook/SKILL.md",
+      "computedHash": "e74602acea4367728a1d0b66b34da99057e2cfde7d7c094ce61ba0eb8a2ec952"
+    },
+    "marketing-context": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/marketing-context/SKILL.md",
+      "computedHash": "dbcb52e34d016152cb01b9e60dfee1edcfde1f5a0c1c2d9b29af2ebf9e6ceb6f"
+    },
+    "marketing-demand-acquisition": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/marketing-demand-acquisition/SKILL.md",
+      "computedHash": "7c8f810d0582c2fd736c9687178a2e7879b11400cb42bdaddad557937a7b7c22"
+    },
+    "marketing-ideas": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/marketing-ideas/SKILL.md",
+      "computedHash": "a53a416117fb63bbcdb08f9934f5615513b6dfd396a802c07cdc4ecc65f9fc58"
+    },
+    "marketing-ops": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/marketing-ops/SKILL.md",
+      "computedHash": "dda1c45fe98f06bc14215329b5bcfdbd6abf4f6b6ddb339517357884a6288eae"
+    },
+    "marketing-psychology": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/marketing-psychology/SKILL.md",
+      "computedHash": "efc99b8841ff3345f62a75efb55b206f24c377d2ceaf18e9593f0ef59e958b03"
+    },
+    "marketing-strategy-pmm": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/marketing-strategy-pmm/SKILL.md",
+      "computedHash": "2a0f6cf86c40ac47d22c8a43f0cfaaebc8e11c278c928016c51ce5047a45ab50"
+    },
+    "mdr-745-specialist": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/mdr-745-specialist/SKILL.md",
+      "computedHash": "f435922c671960be0bc96eda3a22ecc87b27f746adb51fdd470d02cc655fe7b5"
+    },
+    "ms365-tenant-manager": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ms365-tenant-manager/SKILL.md",
+      "computedHash": "9e825b3dbf230cc3d1bcc7eea6c43e9e0a9a969f9c7c9f79b5f71377b96770bf"
+    },
+    "onboarding-cro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/onboarding-cro/SKILL.md",
+      "computedHash": "55d3b4612525b4726c50b6500cbcabbf737b1718f08faea458b6e9d55f729daa"
+    },
+    "org-health-diagnostic": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/org-health-diagnostic/SKILL.md",
+      "computedHash": "92785c5e916ce0f066b499745640d6fd1d5c73d9f335a35546553dea80e0d5c2"
+    },
+    "page-cro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/page-cro/SKILL.md",
+      "computedHash": "dad5aaa7f40d4f6d79421db7ededd8086a34176885429bc4de720076f5b5b33d"
+    },
+    "paid-ads": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/paid-ads/SKILL.md",
+      "computedHash": "fabe3336442dadac57c462d815d34d334ca40197175c19bf5933f7664e5b93c3"
+    },
+    "paywall-upgrade-cro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/paywall-upgrade-cro/SKILL.md",
+      "computedHash": "9f58d067c2b4d9884f2773918a257db170fe2172395a388a2f7f79e8389ee44c"
+    },
+    "playwright-pro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/playwright-pro/SKILL.md",
+      "computedHash": "e6de69b073873a7c36ddd270eed382f7db38dd83f42af8888a445716f9a95839"
+    },
+    "popup-cro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/popup-cro/SKILL.md",
+      "computedHash": "596b403e08ce574200a756913f628cb1ee9f4f57e95513d8bb2a8e2125e59901"
+    },
+    "pricing-strategy": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/pricing-strategy/SKILL.md",
+      "computedHash": "1a10cdbe08bed3a192f20bdf1b4f4ae25c12789bbe1fe21e784d2f48f4f5af6c"
+    },
+    "product-manager-toolkit": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/product-manager-toolkit/SKILL.md",
+      "computedHash": "9929a78a448bd3c1802c1c0b48c20a2cb29965ab55e7a3970a09ade8dd76827d"
+    },
+    "product-strategist": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/product-strategist/SKILL.md",
+      "computedHash": "9dded718d8eae110f818ebff0a0135a806d64e93ce6eba530b538b1c03a889d8"
+    },
+    "programmatic-seo": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/programmatic-seo/SKILL.md",
+      "computedHash": "101cefc3d15ff02a565897da1b86259a3444a732c68bac106336ce61907120a5"
+    },
+    "project-history": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/project-history/SKILL.md",
+      "computedHash": "f1ff4242bd3118d6fe1e3f70d07693648d65d608b53760f0e9f11ff168a40499"
+    },
+    "prompt-engineer-toolkit": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/prompt-engineer-toolkit/SKILL.md",
+      "computedHash": "9bfbf75aa5720760224cdc9ffe378465f136cf86d44fff62b4164afa7cd43323"
+    },
+    "qms-audit-expert": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/qms-audit-expert/SKILL.md",
+      "computedHash": "ea0803d635656f9e2831f468ba1128599dfd2e30ed33bfc8e9298a285a13e4c3"
+    },
+    "quality-documentation-manager": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/quality-documentation-manager/SKILL.md",
+      "computedHash": "c64dc2cea1aad1b4bbc5400eb3a18655e200b81115f78c9bba5c208b5341039d"
+    },
+    "quality-manager-qmr": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/quality-manager-qmr/SKILL.md",
+      "computedHash": "898a8b699e02dbb028c18ab59a9b9786b435df6f3c41e8b857811acdddefb15c"
+    },
+    "quality-manager-qms-iso13485": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/quality-manager-qms-iso13485/SKILL.md",
+      "computedHash": "383a088cda94106f31d7af835fc1c39a8397b65f3d18cad06834826eb50d6160"
+    },
+    "rag-architect": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/rag-architect/SKILL.md",
+      "computedHash": "2e0f774f8ead9ac6e39334dbed2cdbd8491b406eb417fecff95b3011b42b030f"
+    },
+    "readme-generator": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/readme-generator/SKILL.md",
+      "computedHash": "def3725898f09856f3ab913dc21cde7b5e3c30e48210430a32ac59baac5c6738"
+    },
+    "referral-program": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/referral-program/SKILL.md",
+      "computedHash": "7f7a19e331a4689392e01920c1710ad67b54b4fb866cb9f0e86f25cb49957e01"
+    },
+    "regulatory-affairs-head": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/regulatory-affairs-head/SKILL.md",
+      "computedHash": "8fe0d34e720e3937b4bc4beefec5b08c0d9ad86b4551f71a90d63b450c1a19f5"
+    },
+    "revenue-operations": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/revenue-operations/SKILL.md",
+      "computedHash": "db941ed672f887284618a0613ef4e868efbc49e4809ecef8b92812283852c7dc"
+    },
+    "risk-management-specialist": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/risk-management-specialist/SKILL.md",
+      "computedHash": "e97ef5f722ef831a7bd5ee8221649a54d51c3bb99a923f6de28b0cfa8efa7050"
+    },
+    "saas-architect": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/saas-architect/SKILL.md",
+      "computedHash": "23ade74b038efab89822d356316b37a74fb0c101c7a758f389964dd455cd39b8"
+    },
+    "sales-engineer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/sales-engineer/SKILL.md",
+      "computedHash": "78d3ba1af8054e17f5ff429832530494cc138fd7a81b47ba925c498ac2cebe05"
+    },
+    "scenario-war-room": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/scenario-war-room/SKILL.md",
+      "computedHash": "35e7757ae91145f0ef6e94916bf2266cbb7522a901048b54968b3d40570abcb2"
+    },
+    "schema-markup": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/schema-markup/SKILL.md",
+      "computedHash": "2cbc59d3c50c44f951affdca3729e035a2b54c78a19c006e4f9403de4b0020c8"
+    },
+    "scrum-master": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/scrum-master/SKILL.md",
+      "computedHash": "9c42e4e225193cff1392d3f1dfed7bd0c6b2cc016ec40aceab0582bb70f20e39"
+    },
+    "self-improving-agent": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/self-improving-agent/SKILL.md",
+      "computedHash": "7a20708e62d9dd52f2a7b1ac5cb1d8d593dc7b0085f49165e272c2edda1ebe64"
+    },
+    "self-improving-agent-extract": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/self-improving-agent-extract/SKILL.md",
+      "computedHash": "6b95e27db38782cadabf94b07d73c7b319ae28bc8228ac343213dd181c8a5c6e"
+    },
+    "self-improving-agent-promote": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/self-improving-agent-promote/SKILL.md",
+      "computedHash": "a106520a76de22dea8907b94ce6bf385c267749cb187480b6614593af93a1fe3"
+    },
+    "self-improving-agent-remember": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/self-improving-agent-remember/SKILL.md",
+      "computedHash": "e515a8bcd95240a41bd5fa063c6939ded2ae6261c85b8ec6b4ba07190430d0a3"
+    },
+    "self-improving-agent-review": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/self-improving-agent-review/SKILL.md",
+      "computedHash": "ca4bbed1277b4c97ecbb8df85df2b80ac282fdf0f41cd8759e5322faefbe0a08"
+    },
+    "self-improving-agent-status": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/self-improving-agent-status/SKILL.md",
+      "computedHash": "211b1b6e5b0a20dd303dec6a7dd77bb14a4f2714744394b1e42fef9737f99fd9"
+    },
+    "senior-architect": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-architect/SKILL.md",
+      "computedHash": "b85c4620f8fd35aba8e921a4429e6c9fca144013d7d6ba77f0bb85ac1296b6c8"
+    },
+    "senior-backend": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-backend/SKILL.md",
+      "computedHash": "d5860e81a076c4bd356d6fcc08c7c240c16ce1cbe5e174f0c566e747b9bccb24"
+    },
+    "senior-computer-vision": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-computer-vision/SKILL.md",
+      "computedHash": "706db25ec7f9179650168b004c9e261b79a864c9a1b13ff5a5d6bccd5354e100"
+    },
+    "senior-data-engineer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-data-engineer/SKILL.md",
+      "computedHash": "161ccece88a6bcd1a81c68501369a96320a886723e9a60fae21602747c508b4b"
+    },
+    "senior-data-scientist": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-data-scientist/SKILL.md",
+      "computedHash": "2f223b409bccec7a140432440b616b6c1f56db9563c3632d11f2c748328b76de"
+    },
+    "senior-devops": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-devops/SKILL.md",
+      "computedHash": "a2b725e41e180e8035f66c837348486fb776104983a1a910666b16d441287b99"
+    },
+    "senior-frontend": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-frontend/SKILL.md",
+      "computedHash": "5797e84feacbe507be78cdcca2401fe1755c6d7bd4454cc65d88002cd7019c64"
+    },
+    "senior-fullstack": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-fullstack/SKILL.md",
+      "computedHash": "86083e81445adde2237223f1c4cf5cf491cf0a240d12263c0ce99df4801a3d36"
+    },
+    "senior-ml-engineer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-ml-engineer/SKILL.md",
+      "computedHash": "8a4e3951a0fff5fdc649e2b21aa347af2a6a7039034a27d1cd42711cbd0f56dd"
+    },
+    "senior-pm": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-pm/SKILL.md",
+      "computedHash": "97c1f9b61f18be413a0c7470e2d8ee759037bbdd38f4295b47d7e6b5d08417be"
+    },
+    "senior-prompt-engineer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-prompt-engineer/SKILL.md",
+      "computedHash": "c3db3da852eb4b37788c9e1c6221290fd067f1bccc716a6814fa202e54747ebb"
+    },
+    "senior-qa": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-qa/SKILL.md",
+      "computedHash": "ac57f5eb7710d0db911ed02eb21511159a276eba490f44ab4a418a18623caefa"
+    },
+    "senior-secops": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-secops/SKILL.md",
+      "computedHash": "17b4d9474b3d4dfd474eeb44217789f70bef43a26077f3f77062957636160ad7"
+    },
+    "senior-security": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/senior-security/SKILL.md",
+      "computedHash": "465901069755ee871b0a6de72aefea1a2f7bcfb008e36ba694b7527a5779724c"
+    },
+    "seo-aeo-landing": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/seo-aeo-landing/SKILL.md",
+      "computedHash": "29d74fec8921a1eb9b06e0e631e564c26565e4841a50cd1e3e61abc87dd42a46"
+    },
+    "seo-audit": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/seo-audit/SKILL.md",
+      "computedHash": "cae3e26cecbaaaebd79a3bd65a56eb1609220aedd66e118ce7777fe51a325f21"
+    },
+    "signup-flow-cro": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/signup-flow-cro/SKILL.md",
+      "computedHash": "f16f4cf280640b5f87b4242de903d307bb19155892d02b0260d9620b84a30044"
+    },
+    "site-architecture": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/site-architecture/SKILL.md",
+      "computedHash": "712ce9f76de8cc6298b087e6319b831049e54371effff843f911e6999890901a"
+    },
+    "social-content": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/social-content/SKILL.md",
+      "computedHash": "e8a1cebf31fa73ef73015845d08a72e726e14a3b51a6de65663e99c3fe6f2804"
+    },
+    "social-media-analyzer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/social-media-analyzer/SKILL.md",
+      "computedHash": "f37ee0e82837ccb8a3ce160f9ec3152978d82f21e12c2e506f2bc76eea9df901"
+    },
+    "social-media-manager": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/social-media-manager/SKILL.md",
+      "computedHash": "850f9c0e3e8a330eaf8b6f0834d4b52860e60297b90fe43cc1b3523bc6543d60"
+    },
+    "strategic-alignment": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/strategic-alignment/SKILL.md",
+      "computedHash": "da44e6d12ed74718fc8bfcd637abff26d740ae2603fbfd6211b185315912f7d3"
+    },
+    "tdd-guide": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/tdd-guide/SKILL.md",
+      "computedHash": "c233dad48dfab5339b882f897750a8430e1e420c4a3d14fad0e8e34d65ceea90"
+    },
+    "tech-stack-evaluator": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/tech-stack-evaluator/SKILL.md",
+      "computedHash": "a47d482c55409507fdcef80b638eaadc28d55931ddc115f09ee01906260d2894"
+    },
+    "ui-design-system": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ui-design-system/SKILL.md",
+      "computedHash": "6d527a3b4130d522c668919d6dfe185ad456ee119c6cebca602d14edb6096d3a"
+    },
+    "ux-researcher-designer": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/ux-researcher-designer/SKILL.md",
+      "computedHash": "50fd0fa7bbe51bf9b3b4c033f4bda1044899259fb22c8ef7792a4b5bcdf30d98"
+    },
+    "vue-expert": {
+      "source": "johnefemer/skillfish",
+      "sourceType": "github",
+      "skillPath": "skills/vue-expert/SKILL.md",
+      "computedHash": "9ed70c9bccaa5266f69d80fbe7d106b4d24e58ce8668e436a7a43bc0752d5f71"
+    }
+  }
+}

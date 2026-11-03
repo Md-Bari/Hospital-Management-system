@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Activity,
   Mail,
   Phone,
   User,
-  ShieldCheck,
   ArrowRight,
   CheckCircle2,
   Lock,
@@ -17,12 +15,10 @@ import {
   MapPin,
   Clock,
   ArrowLeft,
-  KeyRound,
 } from "lucide-react";
 import { authApi } from "@/lib/api-client";
 
 export default function PatientRegisterPage() {
-  const router = useRouter();
 
   // Stepper: 1 = Details, 2 = Verify OTP, 3 = Success
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -487,7 +483,7 @@ export default function PatientRegisterPage() {
 
               <div className="space-y-2.5 pt-2">
                 <button
-                  onClick={() => router.push("/appointments")}
+                  onClick={() => { window.location.href = "/appointments"; }}
                   className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md shadow-blue-500/20 transition-all text-sm"
                 >
                   <span>Book Chamber Appointment</span>
@@ -495,7 +491,7 @@ export default function PatientRegisterPage() {
                 </button>
 
                 <button
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => { window.location.href = "/dashboard"; }}
                   className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors"
                 >
                   Enter Portal Workspace

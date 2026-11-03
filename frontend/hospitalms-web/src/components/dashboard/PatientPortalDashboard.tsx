@@ -23,6 +23,7 @@ import {
 import { patientsApi, PatientItem } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { PrescriptionPrintModal } from "@/components/dashboard/PrescriptionPrintModal";
 
 interface PatientDashboardData {
   id: string;
@@ -97,6 +98,7 @@ export function PatientPortalDashboard() {
   const { user } = useAuth();
   const [data, setData] = useState<PatientDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [printRxId, setPrintRxId] = useState<string | null>(null);
 
   useEffect(() => {
     patientsApi
@@ -403,10 +405,21 @@ export function PatientPortalDashboard() {
                   <p className="text-xs text-slate-400">Official medical prescriptions issued by attending doctors</p>
                 </div>
               </div>
-              <Link href="/clinical" className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
-                <span>Prescription Archive</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                {latestPrescription && (
+                  <button
+                    onClick={() => setPrintRxId(latestPrescription.id)}
+                    className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-blue-700 px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-all"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Print Rx
+                  </button>
+                )}
+                <Link href="/clinical" className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                  <span>Archive</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
             {latestPrescription ? (
@@ -626,6 +639,11 @@ export function PatientPortalDashboard() {
           </div>
         </div>
       </div>
+
+      <PrescriptionPrintModal
+        prescriptionId={printRxId}
+        onClose={() => setPrintRxId(null)}
+      />
     </div>
   );
 }
