@@ -535,3 +535,4 @@ public class UpdateBedStatusRequest
 {
     public string Status { get; set; } = string.Empty;
 }
+

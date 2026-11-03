@@ -177,3 +177,4 @@ namespace HospitalMS.Infrastructure.Persistence.Migrations
         }
     }
 }
+

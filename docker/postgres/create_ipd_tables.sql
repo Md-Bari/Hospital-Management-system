@@ -72,3 +72,4 @@ CREATE INDEX IF NOT EXISTS "IX_ipd_beds_WardId" ON ipd_beds ("WardId");
 INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
 VALUES ('20261103000000_AddInpatientWardsAndBeds', '10.0.0')
 ON CONFLICT DO NOTHING;
+
